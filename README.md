@@ -50,3 +50,9 @@ page.add(graph) # add another graph; here we're just adding another copy of the 
 # graph.show("../maps/terrorism.html") # to export a Graph directly rather than a Plot
 page.show("../maps/terrorism.html")
 ```
+
+## data sources:
+
+OWID: https://docs.owid.io/projects/etl/api/chart-api/
+
+IMF WEO: https://data.imf.org/en/datasets/IMF.RES:WEO
