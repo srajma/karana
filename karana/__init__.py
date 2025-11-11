@@ -5,7 +5,7 @@ karana - lightweight tools for composing time-series visualizations from tabular
 from ._expression import Expression, series
 from ._line_graph import LineGraph
 from ._plot import Plot, show
-from .loaders import load_imf_charts, load_owid_chart, load_owid_charts
+from .loaders import load_imf_charts, load_imf_ngdpdpc, load_owid_chart, load_owid_charts
 
 __all__ = [
     "series",
@@ -16,6 +16,7 @@ __all__ = [
     "load_owid_chart",
     "load_owid_charts",
     "load_imf_charts",
+    "load_imf_ngdpdpc",
 ]
 
 

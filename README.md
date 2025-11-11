@@ -56,3 +56,5 @@ page.show("../maps/terrorism.html")
 OWID: https://docs.owid.io/projects/etl/api/chart-api/
 
 IMF WEO: https://data.imf.org/en/datasets/IMF.RES:WEO
+
+Special GDP/capita (nominal) [IMF WEO] data (`data/imf_weo_ngdpdpc.csv`) downloaded from https://www.imf.org/external/datamapper/NGDPDPC@WEO and exported to csv
