@@ -111,3 +111,22 @@ def test_plot_renders_multiple_graphs(tmp_path):
     show(plot, file_path=str(second_file))
     assert second_file.exists()
 
+
+def test_default_exp_series_prefix_matching():
+    df = pd.DataFrame(
+        {
+            "Region": ["India (PPP)", "World"],
+            2000: [100, 200],
+            2001: [110, 220],
+        }
+    )
+
+    chart = LineGraph({"economics": df})
+    chart.default_df("economics")
+    chart.default_exp(series("India"))
+
+    key, series_names, expressions = chart._determine_defaults()
+    assert key == "economics"
+    assert series_names == ["India (PPP)"]
+    # expression should map to placeholder using the reference name
+    assert expressions == ["1"]

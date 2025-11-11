@@ -394,6 +394,24 @@
       });
     }
 
+    function computeTickInterval(minValue, maxValue) {
+      const span = Math.abs(maxValue - minValue);
+      if (!Number.isFinite(span) || span <= 0) {
+        return null;
+      }
+      const rough = span / 6;
+      const exponent = Math.floor(Math.log10(rough));
+      const base = Math.pow(10, exponent);
+      const steps = [1, 2, 5, 10];
+      for (const step of steps) {
+        const candidate = step * base;
+        if (rough <= candidate) {
+          return candidate;
+        }
+      }
+      return steps[steps.length - 1] * base;
+    }
+
     function expressionDisplayLabel(expression, regionSeries) {
       const tokens = tokenize(expression);
       const parts = tokens.map((token) => {
@@ -701,10 +719,14 @@
           return {
             x: baseXValues,
             y: values,
-            mode: "lines",
+            mode: "lines+markers",
             name: label,
             line: {
-              width: 3,
+              width: 1.6,
+            },
+            marker: {
+              size: 6,
+              line: { width: 0 },
             },
             hovertemplate: `%{x}<br>${label}: %{y}<extra></extra>`,
           };
@@ -764,6 +786,9 @@
         } else {
           xAxisConfig.autorange = true;
         }
+        xAxisConfig.showgrid = true;
+        xAxisConfig.gridcolor = "#e2e8f0";
+        xAxisConfig.gridwidth = 1;
 
         const toNumericOrNull = (value) => {
           const numeric = Number(value);
@@ -882,7 +907,14 @@
             upper += padding;
           }
           yAxisConfig = { title: "Value", range: [lower, upper], autorange: false };
+          const tickInterval = computeTickInterval(lower, upper);
+          if (tickInterval) {
+            yAxisConfig.dtick = tickInterval;
+          }
         }
+        yAxisConfig.showgrid = true;
+        yAxisConfig.gridcolor = "#e2e8f0";
+        yAxisConfig.gridwidth = 1;
 
         buildAdministrationLegend(administrations);
 

@@ -51,7 +51,11 @@ page.add(graph) # add another graph; here we're just adding another copy of the 
 page.show("../maps/terrorism.html")
 ```
 
-## data sources:
+## dataframes
+
+The dataframe format supported is a pandas dataframe with columns: `Region, (year number), (year number), ...`. There are built-in data loaders `load_owid_charts()` (for OurWorldInData data) and `load_imf_charts()` (for IMF World Economic Outlook data).
+
+### data sources:
 
 OWID: https://docs.owid.io/projects/etl/api/chart-api/
 

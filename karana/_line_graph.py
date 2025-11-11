@@ -608,6 +608,24 @@ class LineGraph:
       }});
     }}
 
+    function computeTickInterval(minValue, maxValue) {{
+      const span = Math.abs(maxValue - minValue);
+      if (!Number.isFinite(span) || span <= 0) {{
+        return null;
+      }}
+      const rough = span / 6;
+      const exponent = Math.floor(Math.log10(rough));
+      const base = Math.pow(10, exponent);
+      const steps = [1, 2, 5, 10];
+      for (const step of steps) {{
+        const candidate = step * base;
+        if (rough <= candidate) {{
+          return candidate;
+        }}
+      }}
+      return steps[steps.length - 1] * base;
+    }}
+
     function expressionDisplayLabel(expression, regionSeries) {{
       const tokens = tokenize(expression);
       const parts = tokens.map((token) => {{
@@ -915,10 +933,14 @@ class LineGraph:
           return {{
             x: baseXValues,
             y: values,
-            mode: "lines",
+            mode: "lines+markers",
             name: label,
             line: {{
-              width: 3,
+              width: 1.6,
+            }},
+            marker: {{
+              size: 6,
+              line: {{ width: 0 }},
             }},
             hovertemplate: `%{{x}}<br>${{label}}: %{{y}}<extra></extra>`,
           }};
@@ -978,6 +1000,9 @@ class LineGraph:
         }} else {{
           xAxisConfig.autorange = true;
         }}
+        xAxisConfig.showgrid = true;
+        xAxisConfig.gridcolor = "#e2e8f0";
+        xAxisConfig.gridwidth = 1;
 
         const toNumericOrNull = (value) => {{
           const numeric = Number(value);
@@ -1096,7 +1121,14 @@ class LineGraph:
             upper += padding;
           }}
           yAxisConfig = {{ title: "Value", range: [lower, upper], autorange: false }};
+          const tickInterval = computeTickInterval(lower, upper);
+          if (tickInterval) {{
+            yAxisConfig.dtick = tickInterval;
+          }}
         }}
+        yAxisConfig.showgrid = true;
+        yAxisConfig.gridcolor = "#e2e8f0";
+        yAxisConfig.gridwidth = 1;
 
         buildAdministrationLegend(administrations);
 
@@ -1178,29 +1210,26 @@ class LineGraph:
 
         if self._default_exprs is None:
             first_region = next(iter(dataset.regions))
-            series_names = [first_region]
+            resolved_series_names = [first_region]
             expression_texts = ["1"]
         else:
-            series_names: List[str] = []
-            seen: set[str] = set()
+            references: List[str] = []
+            seen_refs: set[str] = set()
             for expr in self._default_exprs:
                 for name in expr.collect_series():
-                    if name not in seen:
-                        seen.add(name)
-                        series_names.append(name)
-            if not series_names:
+                    if name not in seen_refs:
+                        seen_refs.add(name)
+                        references.append(name)
+            if not references:
                 raise ValueError("default_exp expressions must reference at least one series.")
-            missing = [name for name in series_names if name not in dataset.regions]
-            if missing:
-                missing_str = ", ".join(missing)
-                raise KeyError(
-                    f"Series referenced in default expression not found in default dataset '{default_key}': {missing_str}"
-                )
+            resolved_series_names = [
+                self._match_series_name(dataset, reference) for reference in references
+            ]
             expression_texts = [
-                expr.to_placeholder_expression(series_names) for expr in self._default_exprs
+                expr.to_placeholder_expression(references) for expr in self._default_exprs
             ]
 
-        return default_key, series_names, expression_texts
+        return default_key, resolved_series_names, expression_texts
 
     def _resolve_dataset_key(self, key: str) -> str:
         if key in self._datasets:
@@ -1224,6 +1253,24 @@ class LineGraph:
         if best_title is not None:
             return best_title
         return key
+
+    def _match_series_name(self, dataset: _Dataset, reference: str) -> str:
+        regions = list(dataset.regions.keys())
+        for name in regions:
+            if name == reference:
+                return name
+        candidates = [name for name in regions if name.startswith(reference)]
+        if candidates:
+            candidates.sort(key=len)
+            return candidates[0]
+        lowered_ref = reference.lower()
+        ci_candidates = [name for name in regions if name.lower().startswith(lowered_ref)]
+        if ci_candidates:
+            ci_candidates.sort(key=len)
+            return ci_candidates[0]
+        raise KeyError(
+            f"Series referenced in default expression not found in dataset '{reference}'."
+        )
 
     def _convert_df(self, df: pd.DataFrame, key: str) -> _Dataset:
         if "Region" not in df.columns:
