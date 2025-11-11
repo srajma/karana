@@ -12,7 +12,7 @@ from karana.loaders.owid import (
 )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+TEST_OUTPUTS_PATH = Path(__file__).resolve().parents[1] / "test_outputs"
 
 
 def test_convert_tidy_chart_single_column():
@@ -223,7 +223,7 @@ def test_load_chart_produces_html():
     graph.default_df(next(iter(datasets)))
     graph.administrations(india_administrations)
 
-    output_path = PROJECT_ROOT / "owid_life_expectancy_test.html"
+    output_path = TEST_OUTPUTS_PATH / "owid_life_expectancy_test.html"
     graph.show(str(output_path))
 
     assert output_path.exists()
