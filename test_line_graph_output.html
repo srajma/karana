@@ -179,7 +179,7 @@
 </head>
 <body>
   <div class="karana-container">
-    <h1>karana LineGraph</h1>
+    <h1 id="chart-title">gdp_ppp</h1>
     <div class="controls">
       <div class="control-group">
         <label for="dataset-select">Dataset</label>
@@ -204,7 +204,7 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
@@ -219,9 +219,32 @@
     const addExpressionButton = document.getElementById("add-expression");
     const statusMessage = document.getElementById("status-message");
     const adminLegend = document.getElementById("admin-legend");
+    const chartTitle = document.getElementById("chart-title");
 
     function getDataset(key) {
       return payload.datasets[key];
+    }
+
+    function resolveDatasetTitle(key) {
+      const mapping = (payload.titles && payload.titles.mapping) || null;
+      if (mapping) {
+        if (Object.prototype.hasOwnProperty.call(mapping, key)) {
+          return mapping[key];
+        }
+        for (const prefix of Object.keys(mapping)) {
+          if (key.startsWith(prefix + ":")) {
+            return mapping[prefix];
+          }
+        }
+      }
+      return key;
+    }
+
+    function updateChartTitle() {
+      if (!chartTitle) {
+        return;
+      }
+      chartTitle.textContent = resolveDatasetTitle(state.datasetKey);
     }
 
     function ensureRegionSelectionsAvailable(dataset) {
@@ -861,6 +884,7 @@
           xaxis: xAxisConfig,
           yaxis: yAxisConfig,
           shapes: [...rectangles, ...boundaryLines],
+          showlegend: true,
         });
       } catch (error) {
         statusMessage.textContent = error.message;
@@ -874,6 +898,7 @@
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
       buildExpressionControls();
+      updateChartTitle();
       updateChart();
     });
 
@@ -894,6 +919,7 @@
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
       buildExpressionControls();
+      updateChartTitle();
       updateChart();
     }
 

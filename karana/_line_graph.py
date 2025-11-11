@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import html as html_utils
 from collections.abc import Sequence as _Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,12 +57,19 @@ class LineGraph:
         self._default_df: Optional[str] = None
         self._default_exprs: Optional[List[Expression]] = None
         self._administrations: Dict[str, List[dict[str, Any]]] = {}
+        self._dataset_titles: Dict[str, str] = {}
 
     # --------------------------------------------------------------------- configuration
 
     def default_df(self, key: str) -> "LineGraph":
         resolved = self._resolve_dataset_key(key)
         self._default_df = resolved
+        return self
+
+    def titles(self, mapping: Mapping[str, str]) -> "LineGraph":
+        if not isinstance(mapping, Mapping):
+            raise TypeError("titles expects a mapping from dataset keys to display titles.")
+        self._dataset_titles = {str(k): str(v) for k, v in mapping.items()}
         return self
 
     def default_exp(self, *exprs: Expression) -> "LineGraph":
@@ -159,17 +167,18 @@ class LineGraph:
         if type.lower() != "html":
             raise ValueError("Only HTML rendering is currently supported.")
 
-        html = self._render_html()
+        html_output = self._render_html()
 
         output_path = Path(file_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(html, encoding="utf-8")
+        output_path.write_text(html_output, encoding="utf-8")
         return output_path
 
     # ------------------------------------------------------------------------------------
 
     def _render_html(self) -> str:
         default_key, default_series_names, default_expressions = self._determine_defaults()
+        dataset_title = html_utils.escape(self._resolve_dataset_title(default_key))
 
         payload = {
             "datasets": {
@@ -188,12 +197,15 @@ class LineGraph:
                 key: self._administrations.get(key, [])
                 for key in self._datasets.keys()
             },
+            "titles": {
+                "mapping": self._dataset_titles,
+            },
         }
 
         payload_json = json.dumps(payload, ensure_ascii=False)
 
         # HTML/JS payload relies on simple DOM manipulation and Plotly for rendering.
-        html = f"""<!DOCTYPE html>
+        html_output = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -374,7 +386,7 @@ class LineGraph:
 </head>
 <body>
   <div class="karana-container">
-    <h1>karana LineGraph</h1>
+    <h1 id="chart-title">{dataset_title}</h1>
     <div class="controls">
       <div class="control-group">
         <label for="dataset-select">Dataset</label>
@@ -414,9 +426,32 @@ class LineGraph:
     const addExpressionButton = document.getElementById("add-expression");
     const statusMessage = document.getElementById("status-message");
     const adminLegend = document.getElementById("admin-legend");
+    const chartTitle = document.getElementById("chart-title");
 
     function getDataset(key) {{
       return payload.datasets[key];
+    }}
+
+    function resolveDatasetTitle(key) {{
+      const mapping = (payload.titles && payload.titles.mapping) || null;
+      if (mapping) {{
+        if (Object.prototype.hasOwnProperty.call(mapping, key)) {{
+          return mapping[key];
+        }}
+        for (const prefix of Object.keys(mapping)) {{
+          if (key.startsWith(prefix + ":")) {{
+            return mapping[prefix];
+          }}
+        }}
+      }}
+      return key;
+    }}
+
+    function updateChartTitle() {{
+      if (!chartTitle) {{
+        return;
+      }}
+      chartTitle.textContent = resolveDatasetTitle(state.datasetKey);
     }}
 
     function ensureRegionSelectionsAvailable(dataset) {{
@@ -1056,6 +1091,7 @@ class LineGraph:
           xaxis: xAxisConfig,
           yaxis: yAxisConfig,
           shapes: [...rectangles, ...boundaryLines],
+          showlegend: true,
         }});
       }} catch (error) {{
         statusMessage.textContent = error.message;
@@ -1069,6 +1105,7 @@ class LineGraph:
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
       buildExpressionControls();
+      updateChartTitle();
       updateChart();
     }});
 
@@ -1089,6 +1126,7 @@ class LineGraph:
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
       buildExpressionControls();
+      updateChartTitle();
       updateChart();
     }}
 
@@ -1097,7 +1135,7 @@ class LineGraph:
 </body>
 </html>
 """
-        return html
+        return html_output
 
     def _determine_defaults(self) -> tuple[str, List[str], List[str]]:
         default_key = self._default_df or next(iter(self._datasets))
@@ -1139,6 +1177,14 @@ class LineGraph:
             if candidate.startswith(prefix):
                 return candidate
         raise KeyError(f"Unknown dataframe key '{key}'.")
+
+    def _resolve_dataset_title(self, key: str) -> str:
+        if key in self._dataset_titles:
+            return self._dataset_titles[key]
+        for prefix, title in self._dataset_titles.items():
+            if key.startswith(prefix + ":"):
+                return title
+        return key
 
     def _convert_df(self, df: pd.DataFrame, key: str) -> _Dataset:
         if "Region" not in df.columns:
