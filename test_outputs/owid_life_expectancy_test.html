@@ -233,10 +233,16 @@
         if (Object.prototype.hasOwnProperty.call(mapping, key)) {
           return mapping[key];
         }
-        for (const prefix of Object.keys(mapping)) {
-          if (key.startsWith(prefix + ":")) {
-            return mapping[prefix];
+        let bestPrefix = null;
+        let bestLength = -1;
+        Object.keys(mapping).forEach((prefix) => {
+          if (key.startsWith(prefix) && prefix.length > bestLength) {
+            bestPrefix = prefix;
+            bestLength = prefix.length;
           }
+        });
+        if (bestPrefix !== null) {
+          return mapping[bestPrefix];
         }
       }
       return key;

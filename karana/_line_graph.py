@@ -447,10 +447,16 @@ class LineGraph:
         if (Object.prototype.hasOwnProperty.call(mapping, key)) {{
           return mapping[key];
         }}
-        for (const prefix of Object.keys(mapping)) {{
-          if (key.startsWith(prefix)) {{
-            return mapping[prefix];
+        let bestPrefix = null;
+        let bestLength = -1;
+        Object.keys(mapping).forEach((prefix) => {{
+          if (key.startsWith(prefix) && prefix.length > bestLength) {{
+            bestPrefix = prefix;
+            bestLength = prefix.length;
           }}
+        }});
+        if (bestPrefix !== null) {{
+          return mapping[bestPrefix];
         }}
       }}
       return key;
@@ -1207,9 +1213,15 @@ class LineGraph:
     def _resolve_dataset_title(self, key: str) -> str:
         if key in self._dataset_titles:
             return self._dataset_titles[key]
+        best_match: Optional[str] = None
+        best_title: Optional[str] = None
         for prefix, title in self._dataset_titles.items():
             if key.startswith(prefix):
-                return title
+                if best_match is None or len(prefix) > len(best_match):
+                    best_match = prefix
+                    best_title = title
+        if best_title is not None:
+            return best_title
         return key
 
     def _convert_df(self, df: pd.DataFrame, key: str) -> _Dataset:

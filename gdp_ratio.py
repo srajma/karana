@@ -78,12 +78,12 @@ dfs = load_owid_charts(
 
 page = karana.Plot("Per-capita income")
 
-graph = karana.LineGraph(dfs)
+graph_idn = karana.LineGraph(dfs)
 
-graph.default_df("gdp-per-capita-penn-world-table")
-graph.default_exp(series("India") / series("Indonesia"))
-graph.administrations(INDIA_ADMINISTRATIONS)
-graph.titles(
+graph_idn.default_df("gdp-per-capita-penn-world-table")
+graph_idn.default_exp(series("India") / series("Indonesia"))
+graph_idn.administrations(INDIA_ADMINISTRATIONS)
+graph_idn.titles(
     {
         "gdp-per-capita-penn-world-table": "GDP/capita (PPP) [Penn World Table]",
         "gdp-per-capita-maddison-project-database": "GDP/capita (PPP) [Maddison Project Database]",
@@ -95,9 +95,19 @@ graph.titles(
     }
 )
 
-page.add(graph)
+page.add(graph_idn)
 page.html("<p class='note'>Between the charts</p>")
-page.add(graph)
+
+# graph_sl = graph_idn.copy()
+# graph_idn.default_series(series("India") / series("Sri Lanka"))
+
+# graph_bgd = graph_idn.copy()
+# graph_idn.default_series(series("India") / series("Bangladesh"))
+
+# graph_vnm = graph_idn.copy()
+# graph_idn.default_series(series("India") / series("Vietnam"))
+
+
 
 # graph.show("../maps/terrorism.html")
 page.show("../maps/gdp_ratio_2.html")
