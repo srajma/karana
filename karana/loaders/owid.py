@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Dict, Iterable, Sequence
+from typing import Dict, Iterable, Mapping, Sequence
 
 import pandas as pd  # type: ignore
-from owid.catalog import charts
+from owid.catalog import charts  # type: ignore
 
 
 class OWIDChartLoaderError(RuntimeError):
@@ -49,6 +49,59 @@ def load_chart(
     )
 
 
+def load_charts(
+    *slugs: str,
+    value_columns: Mapping[str, Iterable[str]] | Iterable[str] | None = None,
+    key_prefix: Mapping[str, str] | str | None = None,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Fetch multiple OWID charts and combine their datasets.
+
+    Parameters
+    ----------
+    slugs:
+        One or more chart identifiers (e.g. ``\"life-expectancy\"``).
+    value_columns:
+        Either a universal iterable of column names applied to every slug, or a mapping
+        from slug to its specific iterable of columns. When omitted, each chart infers
+        its own numeric value columns.
+    key_prefix:
+        Either a universal prefix applied to dataset keys or a mapping from slug to
+        prefix. Allows namespace customization per chart.
+
+    Returns
+    -------
+    dict[str, pandas.DataFrame]
+        Combined mapping suitable for :class:`karana.LineGraph`.
+    """
+
+    if not slugs:
+        raise ValueError("load_charts requires at least one chart slug.")
+
+    datasets: "OrderedDict[str, pd.DataFrame]" = OrderedDict()
+
+    for slug in slugs:
+        columns = (
+            value_columns.get(slug)
+            if isinstance(value_columns, Mapping)
+            else value_columns
+        )
+        prefix = key_prefix.get(slug) if isinstance(key_prefix, Mapping) else key_prefix
+
+        slug_datasets = load_chart(slug, value_columns=columns, key_prefix=prefix)
+
+        overlap = set(datasets).intersection(slug_datasets)
+        if overlap:
+            overlap_str = ", ".join(sorted(overlap))
+            raise OWIDChartLoaderError(
+                f"Dataset key collision when loading chart '{slug}': {overlap_str}"
+            )
+
+        datasets.update(slug_datasets)
+
+    return datasets
+
+
 def _convert_tidy_chart(
     slug: str,
     tidy: pd.DataFrame,
@@ -80,17 +133,12 @@ def _convert_tidy_chart(
         )
 
     datasets: "OrderedDict[str, pd.DataFrame]" = OrderedDict()
-    multi_column = len(candidate_columns) > 1
+    base_prefix = key_prefix or slug
 
     for column in candidate_columns:
         wide = _tidy_column_to_wide(tidy, column)
 
-        if key_prefix is not None:
-            key = f"{key_prefix}:{column}"
-        elif multi_column:
-            key = f"{slug}:{column}"
-        else:
-            key = key_prefix or column
+        key = f"{base_prefix}:{column}"
 
         datasets[key] = wide
 

@@ -60,9 +60,8 @@ class LineGraph:
     # --------------------------------------------------------------------- configuration
 
     def default_df(self, key: str) -> "LineGraph":
-        if key not in self._datasets:
-            raise KeyError(f"Unknown dataframe key '{key}'.")
-        self._default_df = key
+        resolved = self._resolve_dataset_key(key)
+        self._default_df = resolved
         return self
 
     def default_exp(self, *exprs: Expression) -> "LineGraph":
@@ -897,20 +896,20 @@ class LineGraph:
           }};
         }});
 
-        const availabilityMask = new Array(baseXValues.length).fill(false);
+        const finiteIndices = [];
         traces.forEach((trace) => {{
           trace.y.forEach((value, index) => {{
             if (value != null && Number.isFinite(value)) {{
-              availabilityMask[index] = true;
+              finiteIndices.push(index);
             }}
           }});
         }});
 
-        let sliceStartIndex = availabilityMask.indexOf(true);
-        let sliceEndIndex = availabilityMask.lastIndexOf(true);
-        if (sliceStartIndex === -1 || sliceEndIndex === -1) {{
-          sliceStartIndex = 0;
-          sliceEndIndex = baseXValues.length - 1;
+        let sliceStartIndex = 0;
+        let sliceEndIndex = baseXValues.length - 1;
+        if (finiteIndices.length > 0) {{
+          sliceStartIndex = Math.min(...finiteIndices);
+          sliceEndIndex = Math.max(...finiteIndices);
         }}
 
         const trimmedXValues = baseXValues.slice(sliceStartIndex, sliceEndIndex + 1);
@@ -919,11 +918,25 @@ class LineGraph:
           trace.y = trace.y.slice(sliceStartIndex, sliceEndIndex + 1);
         }});
 
-        const hasTrimmedDomain = trimmedXValues.length > 0;
-        const xRangeMin = hasTrimmedDomain ? trimmedXValues[0] : baseXValues[0];
-        const xRangeMax = hasTrimmedDomain
-          ? trimmedXValues[trimmedXValues.length - 1]
-          : baseXValues[baseXValues.length - 1];
+        const filteredXValues = [];
+        traces.forEach((trace) => {{
+          const filteredX = [];
+          const filteredY = [];
+          trace.x.forEach((xValue, index) => {{
+            const yValue = trace.y[index];
+            if (yValue != null && Number.isFinite(yValue)) {{
+              filteredX.push(xValue);
+              filteredY.push(yValue);
+              filteredXValues.push(xValue);
+            }}
+          }});
+          trace.x = filteredX;
+          trace.y = filteredY;
+        }});
+
+        const hasTrimmedDomain = filteredXValues.length > 0;
+        const xRangeMin = hasTrimmedDomain ? Math.min(...filteredXValues) : baseXValues[0];
+        const xRangeMax = hasTrimmedDomain ? Math.max(...filteredXValues) : baseXValues[baseXValues.length - 1];
 
         const xAxisConfig = {{ title: "Year" }};
         if (useNumericYears) {{
@@ -934,6 +947,8 @@ class LineGraph:
         }}
         if (hasTrimmedDomain) {{
           xAxisConfig.range = [xRangeMin, xRangeMax];
+        }} else {{
+          xAxisConfig.autorange = true;
         }}
 
         const toNumericOrNull = (value) => {{
@@ -951,7 +966,7 @@ class LineGraph:
               if (startNumeric == null || endNumeric == null) {{
                 return null;
               }}
-              if (startNumeric > xRangeMax || endNumeric < xRangeMin) {{
+              if (!hasTrimmedDomain || startNumeric > xRangeMax || endNumeric < xRangeMin) {{
                 return null;
               }}
               return {{
@@ -988,7 +1003,10 @@ class LineGraph:
         const boundaryLines = [];
         const seenBoundaries = new Set();
         const addBoundary = (value, key, color) => {{
-          if (value == null) {{
+          if (value == null || !hasTrimmedDomain) {{
+            return;
+          }}
+          if (value < xRangeMin || value > xRangeMax) {{
             return;
           }}
           if (seenBoundaries.has(key)) {{
@@ -1013,12 +1031,8 @@ class LineGraph:
           if (useNumericYears) {{
             const startNumeric = toNumericOrNull(admin.start);
             const endNumeric = toNumericOrNull(admin.end);
-            if (startNumeric != null && startNumeric >= xRangeMin && startNumeric <= xRangeMax) {{
-              addBoundary(startNumeric, "start-" + startNumeric, color);
-            }}
-            if (endNumeric != null && endNumeric >= xRangeMin && endNumeric <= xRangeMax) {{
-              addBoundary(endNumeric, "end-" + endNumeric, color);
-            }}
+            addBoundary(startNumeric, "start-" + startNumeric, color);
+            addBoundary(endNumeric, "end-" + endNumeric, color);
             return;
           }}
 
@@ -1139,6 +1153,15 @@ class LineGraph:
             ]
 
         return default_key, series_names, expression_texts
+
+    def _resolve_dataset_key(self, key: str) -> str:
+        if key in self._datasets:
+            return key
+        prefix = f"{key}:"
+        for candidate in self._datasets:
+            if candidate.startswith(prefix):
+                return candidate
+        raise KeyError(f"Unknown dataframe key '{key}'.")
 
     def _convert_df(self, df: pd.DataFrame, key: str) -> _Dataset:
         if "Region" not in df.columns:

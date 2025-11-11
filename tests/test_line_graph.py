@@ -60,3 +60,17 @@ def test_line_graph_generates_html():
     assert "admin-legend-item" in content
     assert "xAxisConfig.range = [xRangeMin, xRangeMax];" in content
 
+
+def test_default_df_accepts_slug_prefix():
+    df = pd.DataFrame(
+        {
+            "Region": ["Alpha", "Beta"],
+            "2020": [1.0, 2.0],
+        }
+    )
+    chart = LineGraph({"terrorism-deaths:total_killed": df})
+
+    chart.default_df("terrorism-deaths")
+
+    assert chart._default_df == "terrorism-deaths:total_killed"
+

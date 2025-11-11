@@ -8,6 +8,7 @@ from karana.loaders.owid import (
     OWIDChartLoaderError,
     _convert_tidy_chart,
     load_chart,
+    load_charts,
 )
 
 
@@ -24,9 +25,9 @@ def test_convert_tidy_chart_single_column():
     )
 
     datasets = _convert_tidy_chart("life-expectancy", tidy)
-    assert set(datasets.keys()) == {"life_expectancy"}
+    assert set(datasets.keys()) == {"life-expectancy:life_expectancy"}
 
-    result = datasets["life_expectancy"]
+    result = datasets["life-expectancy:life_expectancy"]
     expected = pd.DataFrame(
         {
             "Region": ["Alpha", "Beta"],
@@ -67,6 +68,96 @@ def test_convert_tidy_chart_missing_required_columns():
 
     with pytest.raises(OWIDChartLoaderError):
         _convert_tidy_chart("broken", tidy)
+
+
+def test_load_charts_combines_multiple(monkeypatch):
+    slug_data = {
+        "chart_a": pd.DataFrame(
+            {
+                "entities": ["Alpha", "Beta"],
+                "years": [2020, 2020],
+                "value_a": [1.0, 2.0],
+            }
+        ),
+        "chart_b": pd.DataFrame(
+            {
+                "entities": ["Alpha", "Beta"],
+                "years": [2020, 2020],
+                "value_b": [3.0, 4.0],
+            }
+        ),
+    }
+
+    monkeypatch.setattr(
+        "karana.loaders.owid.charts.get_data",
+        lambda slug: slug_data[slug],
+    )
+
+    datasets = load_charts(
+        "chart_a",
+        "chart_b",
+        value_columns={"chart_a": ["value_a"], "chart_b": ["value_b"]},
+        key_prefix={"chart_a": "a", "chart_b": "b"},
+    )
+
+    assert set(datasets) == {"a:value_a", "b:value_b"}
+    for df in datasets.values():
+        assert list(df.columns) == ["Region", "2020"]
+
+
+def test_load_charts_detects_key_collisions(monkeypatch):
+    df = pd.DataFrame(
+        {
+            "entities": ["Alpha"],
+            "years": [2020],
+            "value": [1.0],
+        }
+    )
+
+    monkeypatch.setattr(
+        "karana.loaders.owid.charts.get_data",
+        lambda slug: df,
+    )
+
+    with pytest.raises(OWIDChartLoaderError):
+        load_charts(
+            "chart_a",
+            "chart_b",
+            value_columns=["value"],
+            key_prefix="shared",
+        )
+
+
+def test_load_charts_default_slug_prefix(monkeypatch):
+    slug_data = {
+        "chart_a": pd.DataFrame(
+            {
+                "entities": ["Alpha"],
+                "years": [2020],
+                "value": [1.0],
+            }
+        ),
+        "chart_b": pd.DataFrame(
+            {
+                "entities": ["Beta"],
+                "years": [2020],
+                "value": [2.0],
+            }
+        ),
+    }
+
+    monkeypatch.setattr(
+        "karana.loaders.owid.charts.get_data",
+        lambda slug: slug_data[slug],
+    )
+
+    datasets = load_charts(
+        "chart_a",
+        "chart_b",
+        value_columns=["value"],
+    )
+
+    assert set(datasets.keys()) == {"chart_a:value", "chart_b:value"}
 
 
 @pytest.mark.integration
