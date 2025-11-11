@@ -6,106 +6,111 @@
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     :root {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       color: #1f2933;
-      background: #f9fafb;
+      background: #f5f7fb;
     }
     body {
       margin: 0;
-      /*padding: 1.5rem;*/
-      background: #ffffff;
-
+      padding: 0;
+      background: transparent;
     }
     .karana-container {
-      max-width: 960px;
-      margin: 0 auto;
+      max-width: 1180px;
+      margin: 2.5rem auto;
       background: #ffffff;
-      border-radius: 12px;
-      /*box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);*/
-      padding: 1.5rem 1.75rem 2rem;
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 2.25rem 2.75rem 2.75rem;
+      box-shadow: 0 24px 48px rgba(15, 23, 42, 0.08);
     }
     h1 {
-      font-size: 1.5rem;
-      margin: 0 0 1rem;
+      font-size: 2.15rem;
+      font-weight: 300;
+      margin: 0 0 2rem;
+      color: #0f172a;
+      letter-spacing: -0.01em;
     }
     .controls {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
     }
     .chart-and-legend {
       display: flex;
-      gap: 1.25rem;
+      gap: 2rem;
       align-items: flex-start;
     }
     .control-group {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      gap: 0.85rem;
       align-items: center;
     }
     label {
-      font-weight: 600;
+      font-weight: 500;
       font-size: 0.95rem;
-      min-width: 120px;
+      min-width: 130px;
+      color: #475569;
     }
     select, input[type="text"] {
-      padding: 0.5rem 0.75rem;
-      border-radius: 8px;
-      border: 1px solid #cbd5e1;
-      font-size: 0.95rem;
-      min-width: 220px;
+      padding: 0.55rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid #d7dee8;
+      font-size: 0.97rem;
+      min-width: 240px;
       background: #f8fafc;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     select:focus, input[type="text"]:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-      background: white;
+      border-color: #1d4ed8;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      background: #ffffff;
     }
     button {
       border: none;
-      background: #2563eb;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: white;
       border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.9rem;
+      padding: 0.5rem 1.05rem;
+      font-size: 0.93rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     button:hover {
-      background: #1d4ed8;
-      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.22);
     }
     .region-slot {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.55rem;
     }
     .region-slot span {
-      font-weight: 600;
-      color: #475569;
-      min-width: 1.5rem;
+      font-weight: 500;
+      color: #94a3b8;
+      min-width: 1.75rem;
       text-align: right;
     }
     .expression-list {
       display: flex;
       flex-direction: column;
       width: 100%;
-      gap: 0.5rem;
+      gap: 0.6rem;
     }
     .expression-slot {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.6rem;
       width: 100%;
     }
     .expression-slot span {
-      font-weight: 600;
+      font-weight: 500;
       color: #475569;
-      min-width: 7rem;
+      min-width: 7.5rem;
     }
     .expression-slot input {
       flex: 1;
@@ -113,14 +118,16 @@
     }
     .remove-expression,
     .remove-region {
-      background: #e11d48;
-      padding: 0.35rem 0.7rem;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 0.4rem 0.8rem;
       border-radius: 999px;
       font-size: 0.85rem;
     }
     .remove-expression:hover,
     .remove-region:hover {
-      background: #be123c;
+      background: #e2e8f0;
+      color: #1e293b;
     }
     .status-message {
       min-height: 1.25rem;
@@ -132,56 +139,57 @@
       min-height: 420px;
     }
     .admin-legend {
-      width: 220px;
+      width: 240px;
       background: #f8fafc;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      padding: 0.75rem;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 1.1rem 1.2rem;
       display: none;
     }
     .admin-legend.is-visible {
       display: flex;
       flex-direction: column;
-      /*gap: 0.65rem;*/
+      gap: 0.9rem;
     }
     .admin-legend h2 {
-      font-size: 1rem;
-      margin: 0 0 0.35rem;
+      font-size: 1.05rem;
+      margin: 0;
       color: #1f2937;
+      font-weight: 500;
+      letter-spacing: -0.01em;
     }
     .admin-legend-item {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.55rem;
       align-items: center;
-      font-size: 0.75rem;
-      line-height: 1rem;
+      font-size: 0.8rem;
+      line-height: 1.1rem;
       color: #334155;
     }
     .admin-legend-color {
       width: 18px;
       height: 18px;
       border-radius: 4px;
-      border: 2px dotted rgba(51, 65, 85, 0.4);
+      border: 1px dotted rgba(51, 65, 85, 0.35);
       flex-shrink: 0;
       position: relative;
     }
     .admin-legend-color::after {
       content: "";
       position: absolute;
-      inset: 2px;
-      border-radius: 2px;
+      inset: 3px;
+      border-radius: 3px;
       background: currentColor;
-      opacity: 0.85;
+      opacity: 0.75;
     }
     .admin-legend-text {
-      font-weight: 500;
+      font-weight: 450;
       color: #111827;
     }
   </style>
 </head>
 <body>
   <div class="karana-container">
-    <h1 id="chart-title">life-expectancy:life_expectancy</h1>
     <div class="controls">
       <div class="control-group">
         <label for="dataset-select">Dataset</label>
@@ -199,6 +207,7 @@
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
+    <h1 id="chart-title">life-expectancy:life_expectancy</h1>
     <div class="chart-and-legend">
       <div id="chart"></div>
       <div id="admin-legend" class="admin-legend"></div>
@@ -834,7 +843,7 @@
             x1: value,
             y0: 0,
             y1: 1,
-            line: { color, width: 2, dash: "dot" },
+            line: { color, width: 1, dash: "dot" },
             layer: "above",
           });
         };

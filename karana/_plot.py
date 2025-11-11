@@ -66,7 +66,7 @@ class Plot:
   <title>{title_text}</title>
   <style>
     :root {{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       color: #1f2933;
       background: #f9fafb;
     }}

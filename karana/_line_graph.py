@@ -220,7 +220,7 @@ class LineGraph:
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     :root {{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       color: #1f2933;
       background: #f9fafb;
     }}

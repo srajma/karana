@@ -1,3 +1,4 @@
+from copy import deepcopy
 import karana
 from karana.loaders import load_owid_charts, load_imf_charts
 from karana import series
@@ -95,18 +96,35 @@ graph_idn.titles(
     }
 )
 
+graph_sl = deepcopy(graph_idn)
+graph_sl.default_exp(series("India") / series("Sri Lanka"))
+
+graph_bgd = deepcopy(graph_idn)
+graph_bgd.default_exp(series("India") / series("Bangladesh"))
+
+graph_vnm = deepcopy(graph_idn)
+graph_vnm.default_exp(series("India") / series("Vietnam"))
+
+# graph_me = deepcopy(graph_idn)
+# graph_me.default_df("NGDPDPC.A")
+# graph_me.default_exp(series("India") / series("Middle East (Region)"))
+
+# graph_sea = deepcopy(graph_me)
+# graph_sea.default_exp(series("India") / series("Southeast Asia"))
+
+# graph_ssa = deepcopy(graph_me)
+# graph_ssa.default_exp(series("India") / series("Sub-Saharan Africa"))
+
+
+# page.add(graph_sea)
+# page.add(graph_ssa)
+# page.add(graph_me)
+page.add(graph_sl)
+page.add(graph_vnm)
 page.add(graph_idn)
-page.html("<p class='note'>Between the charts</p>")
+page.add(graph_bgd)
 
-# graph_sl = graph_idn.copy()
-# graph_idn.default_series(series("India") / series("Sri Lanka"))
-
-# graph_bgd = graph_idn.copy()
-# graph_idn.default_series(series("India") / series("Bangladesh"))
-
-# graph_vnm = graph_idn.copy()
-# graph_idn.default_series(series("India") / series("Vietnam"))
-
+# page.html("<p class='note'>Between the charts</p>")
 
 
 # graph.show("../maps/terrorism.html")
