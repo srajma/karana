@@ -94,8 +94,8 @@ def test_plot_renders_multiple_graphs(tmp_path):
     graph_two.default_exp(series("Beta"))
 
     plot = Plot("Example Plot")
-    plot.add(graph_one, title="Alpha series")
-    plot.add(graph_two, title="Beta series")
+    plot.add(graph_one)
+    plot.add(graph_two)
 
     output_file = tmp_path / "plot.html"
     plot.show(str(output_file))
@@ -103,8 +103,7 @@ def test_plot_renders_multiple_graphs(tmp_path):
     assert output_file.exists()
     html = output_file.read_text(encoding="utf-8")
     assert html.count("<iframe") == 2
-    assert "Alpha series" in html
-    assert "Beta series" in html
+    assert "Example Plot" in html
 
     second_file = tmp_path / "plot_via_helper.html"
     show(plot, file_path=str(second_file))

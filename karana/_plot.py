@@ -29,26 +29,22 @@ class Plot:
         if not self._entries:
             raise ValueError("Plot has no graphs to render. Call add() first.")
 
-        cards = []
-        for index, (graph, title) in enumerate(self._entries, start=1):
+        frames = []
+        for graph, _ in self._entries:
             graph_html = graph._render_html()
             iframe_doc = html.escape(graph_html, quote=True)
-            header = title or f"Chart {index}"
-            cards.append(
+            frames.append(
                 f"""
-        <section class="plot-card">
-          <header>{html.escape(header)}</header>
-          <iframe
-            class="plot-frame"
-            srcdoc="{iframe_doc}"
-            loading="lazy"
-            sandbox="allow-scripts allow-same-origin"
-          ></iframe>
-        </section>
-        """
+    <iframe
+      class="plot-frame"
+      srcdoc="{iframe_doc}"
+      loading="lazy"
+      sandbox="allow-scripts allow-same-origin"
+    ></iframe>
+    """
             )
 
-        cards_html = "\n".join(cards)
+        frames_html = "\n".join(frames)
         title_text = html.escape(self._title)
 
         return f"""<!DOCTYPE html>
@@ -73,36 +69,24 @@ class Plot:
     }}
     .plot-container {{
       display: grid;
-      gap: 1.5rem;
+      gap: 2rem;
       max-width: 1100px;
       margin: 0 auto 2rem;
-    }}
-    .plot-card {{
-      background: #ffffff;
-      border-radius: 14px;
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-      padding: 1rem 1rem 1.25rem;
-      border: 1px solid #e2e8f0;
-    }}
-    .plot-card > header {{
-      font-size: 1rem;
-      font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 0.75rem;
     }}
     .plot-frame {{
       width: 100%;
       border: none;
-      border-radius: 8px;
-      min-height: 520px;
+      border-radius: 12px;
+      min-height: 540px;
       background: #ffffff;
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.10);
     }}
   </style>
 </head>
 <body>
   <h1>{title_text}</h1>
   <div class="plot-container">
-    {cards_html}
+    {frames_html}
   </div>
 </body>
 </html>
