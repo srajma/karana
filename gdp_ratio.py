@@ -74,7 +74,7 @@ dfs = load_owid_charts(
     "gdp-per-capita-maddison-project-database",
     "gdp-per-capita-penn-world-table",
     "gdp-per-capita-worldbank",
-) | load_imf_charts("PPPPC.A", "PPPGDP.A", "NGDPD.A", "NGDPDPC.A")
+) | load_imf_charts("PPPPC.A", "NGDPRPPPPC.A", "NGDPDPC.A")
 
 page = karana.Plot("Per-capita income")
 
@@ -90,7 +90,7 @@ graph.titles(
         "gdp-per-capita-worldbank": "GDP/capita (PPP) [World Bank]",
         "gdp-per-capita-worldbank-constant-usd": "GDP/capita (nominal) [World Bank]",
         "PPPPC.A": "GDP/capita (PPP, constant prices) [IMF WEO]",
-        "PPPGDP.A": "GDP/capita (PPP, current prices) [IMF WEO]",
+        "NGDPRPPPPC.A": "GDP/capita (PPP, constant prices) [IMF WEO]",
         "NGDPDPC.A": "GDP/capita (nominal, current prices) [IMF WEO]",
     }
 )
