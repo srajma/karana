@@ -26,6 +26,17 @@ def test_line_graph_generates_html():
         series("India") / series("World"),
         series("China") / series("World"),
     )
+    chart.administrations(
+        [
+            {
+                "start": 2018,
+                "end": 2019,
+                "label": "Sample Admin",
+                "party": "Test Party",
+                "color": "#123456",
+            }
+        ]
+    )
 
     output_file = PROJECT_ROOT / "test_line_graph_output.html"
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -37,4 +48,5 @@ def test_line_graph_generates_html():
     assert "payload =" in content
     assert "+ Add Expression" in content
     assert "Remove series" in content or "Remove expression" in content
+    assert "Sample Admin" in content
 

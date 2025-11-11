@@ -4,11 +4,28 @@ import json
 from collections.abc import Sequence as _Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import pandas as pd  # type: ignore
 
 from ._expression import Expression
+
+
+def _normalize_year(value: Any) -> str:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return str(int(value))
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            raise ValueError("Year values must not be empty strings.")
+        if text.isdigit():
+            return text
+        try:
+            numeric = float(text)
+        except ValueError as exc:
+            raise ValueError(f"Invalid year value '{value}'.") from exc
+        return str(int(numeric))
+    raise TypeError(f"Year value of type {type(value)!r} is not supported.")
 
 
 @dataclass(frozen=True)
@@ -38,6 +55,7 @@ class LineGraph:
 
         self._default_df: Optional[str] = None
         self._default_exprs: Optional[List[Expression]] = None
+        self._administrations: Dict[str, List[dict[str, Any]]] = {}
 
     # --------------------------------------------------------------------- configuration
 
@@ -76,6 +94,66 @@ class LineGraph:
         self._default_exprs = list(expr_list)
         return self
 
+    def administrations(
+        self,
+        records: Sequence[Mapping[str, Any]],
+        *,
+        dataset: Optional[str] = None,
+    ) -> "LineGraph":
+        if not records:
+            raise ValueError("administrations requires at least one record.")
+
+        target_dataset = dataset or self._default_df or next(iter(self._datasets))
+        if target_dataset not in self._datasets:
+            raise KeyError(f"Unknown dataset key '{target_dataset}' for administrations().")
+
+        processed: List[dict[str, Any]] = []
+        for record in records:
+            if not isinstance(record, Mapping):
+                raise TypeError("administrations expects a sequence of mapping objects.")
+
+            try:
+                raw_start = record["start"]
+                raw_end = record["end"]
+            except KeyError as exc:
+                raise KeyError("administration records must include 'start' and 'end' values.") from exc
+
+            start_year = _normalize_year(raw_start)
+            end_year = _normalize_year(raw_end)
+            if int(start_year) > int(end_year):
+                raise ValueError(
+                    f"Administration start year {start_year} exceeds end year {end_year}."
+                )
+
+            label = (
+                record.get("label")
+                or record.get("name")
+                or record.get("title")
+                or record.get("PM")
+                or record.get("prime_minister")
+            )
+            party = record.get("party") or record.get("affiliation")
+            color = record.get("color") or "#94a3b8"
+            opacity = record.get("opacity")
+            try:
+                opacity_value = float(opacity) if opacity is not None else None
+            except (TypeError, ValueError):
+                raise ValueError(f"Invalid opacity value {opacity!r} for administration.") from None
+
+            processed.append(
+                {
+                    "start": start_year,
+                    "end": end_year,
+                    "label": label,
+                    "party": party,
+                    "color": color,
+                    "opacity": opacity_value,
+                }
+            )
+
+        self._administrations[target_dataset] = processed
+        return self
+
     # ------------------------------------------------------------------------------------
 
     def show(self, file_path: str, type: str = "html") -> Path:
@@ -106,6 +184,10 @@ class LineGraph:
                 "dataset": default_key,
                 "seriesNames": default_series_names,
                 "expressions": default_expressions,
+            },
+            "administrations": {
+                key: self._administrations.get(key, [])
+                for key in self._datasets.keys()
             },
         }
 
@@ -671,6 +753,8 @@ class LineGraph:
           }};
         }});
 
+        const administrations = (payload.administrations && payload.administrations[state.datasetKey]) || [];
+
         const trimmedExpressions = state.expressions.map((expr) => expr.trim());
         if (trimmedExpressions.some((expr) => expr.length === 0)) {{
           throw new Error("Expressions cannot be empty.");
@@ -691,12 +775,49 @@ class LineGraph:
           }};
         }});
 
+        const shapes = administrations.map((admin) => {{
+          const fillcolor = admin.color || "#94a3b8";
+          const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
+          return {{
+            type: "rect",
+            xref: "x",
+            yref: "paper",
+            x0: admin.start,
+            x1: admin.end,
+            y0: 0,
+            y1: 1,
+            fillcolor,
+            opacity,
+            line: {{ width: 0 }},
+            layer: "below",
+          }};
+        }});
+
+        const annotations = administrations
+          .filter((admin) => admin.label || admin.party)
+          .map((admin) => {{
+            const baseText = admin.label || "";
+            const partyText = admin.party ? (baseText ? " (" + admin.party + ")" : admin.party) : "";
+            return {{
+              xref: "x",
+              yref: "paper",
+              x: admin.labelPosition || admin.start,
+              y: 1.04,
+              text: baseText + partyText,
+              showarrow: false,
+              align: "center",
+              font: {{ size: 11, color: "#1f2933" }},
+            }};
+          }});
+
         Plotly.react("chart", traces, {{
           margin: {{ l: 60, r: 30, t: 20, b: 60 }},
           hovermode: "x unified",
           legend: {{ orientation: "h", y: -0.2 }},
           xaxis: {{ title: "Year" }},
           yaxis: {{ title: "Value" }},
+          shapes,
+          annotations,
         }});
       }} catch (error) {{
         statusMessage.textContent = error.message;

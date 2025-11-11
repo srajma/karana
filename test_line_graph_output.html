@@ -150,7 +150,7 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2018", "2019", "2020"], "regions": {"India": [90.0, 100.0, 110.0], "World": [180.0, 200.0, 220.0], "China": [120.0, 140.0, 160.0]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2018", "2019", "2020"], "regions": {"India": [90.0, 100.0, 110.0], "World": [180.0, 200.0, 220.0], "China": [120.0, 140.0, 160.0]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
@@ -557,6 +557,8 @@
           };
         });
 
+        const administrations = (payload.administrations && payload.administrations[state.datasetKey]) || [];
+
         const trimmedExpressions = state.expressions.map((expr) => expr.trim());
         if (trimmedExpressions.some((expr) => expr.length === 0)) {
           throw new Error("Expressions cannot be empty.");
@@ -577,12 +579,49 @@
           };
         });
 
+        const shapes = administrations.map((admin) => {
+          const fillcolor = admin.color || "#94a3b8";
+          const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
+          return {
+            type: "rect",
+            xref: "x",
+            yref: "paper",
+            x0: admin.start,
+            x1: admin.end,
+            y0: 0,
+            y1: 1,
+            fillcolor,
+            opacity,
+            line: { width: 0 },
+            layer: "below",
+          };
+        });
+
+        const annotations = administrations
+          .filter((admin) => admin.label || admin.party)
+          .map((admin) => {
+            const baseText = admin.label || "";
+            const partyText = admin.party ? (baseText ? " (" + admin.party + ")" : admin.party) : "";
+            return {
+              xref: "x",
+              yref: "paper",
+              x: admin.labelPosition || admin.start,
+              y: 1.04,
+              text: baseText + partyText,
+              showarrow: false,
+              align: "center",
+              font: { size: 11, color: "#1f2933" },
+            };
+          });
+
         Plotly.react("chart", traces, {
           margin: { l: 60, r: 30, t: 20, b: 60 },
           hovermode: "x unified",
           legend: { orientation: "h", y: -0.2 },
           xaxis: { title: "Year" },
           yaxis: { title: "Value" },
+          shapes,
+          annotations,
         });
       } catch (error) {
         statusMessage.textContent = error.message;
