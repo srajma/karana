@@ -448,7 +448,7 @@ class LineGraph:
           return mapping[key];
         }}
         for (const prefix of Object.keys(mapping)) {{
-          if (key.startsWith(prefix + ":")) {{
+          if (key.startsWith(prefix)) {{
             return mapping[prefix];
           }}
         }}
@@ -1208,7 +1208,7 @@ class LineGraph:
         if key in self._dataset_titles:
             return self._dataset_titles[key]
         for prefix, title in self._dataset_titles.items():
-            if key.startswith(prefix + ":"):
+            if key.startswith(prefix):
                 return title
         return key
 
