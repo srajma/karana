@@ -83,9 +83,17 @@ graph = karana.LineGraph(dfs)
 graph.default_df("gdp-per-capita-penn-world-table")
 graph.default_exp(series("India") / series("Indonesia"))
 graph.administrations(INDIA_ADMINISTRATIONS)
-# graph.titles(
-#     {"terrorist-attacks": "Terrorist attacks", "terrorism-deaths": "Terrorism deaths"}
-# )
+graph.titles(
+    {
+        "gdp-per-capita-penn-world-table": "GDP/capita (PPP) [Penn World Table]",
+        "gdp-per-capita-maddison-project-database": "GDP/capita (PPP) [Maddison Project Database]",
+        "gdp-per-capita-worldbank": "GDP/capita (PPP) [World Bank]",
+        "gdp-per-capita-worldbank-constant-usd": "GDP/capita (nominal) [World Bank]",
+        "PPPPC.A": "GDP/capita (PPP, constant prices) [IMF WEO]",
+        "PPPGDP.A": "GDP/capita (PPP, current prices) [IMF WEO]",
+        "NGDPDPC.A": "GDP/capita (nominal, current prices) [IMF WEO]",
+    }
+)
 
 page.add(graph)
 page.html("<p class='note'>Between the charts</p>")

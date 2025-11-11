@@ -38,7 +38,7 @@ def test_load_imf_charts_filters_and_formats(tmp_path):
 
     gdp = datasets["PPPGDP.A[GDP PPP dollars]"]
     assert list(gdp.columns) == ["Region", "2020", "2021"]
-    assert gdp.iloc[0]["Region"] == "IND.PPPGDP.A"
+    assert list(gdp["Region"]) == ["India", "United States"]
     assert pytest.approx(gdp.iloc[0]["2020"]) == 123.4
     assert pytest.approx(gdp.iloc[1]["2021"]) == 580.0
 

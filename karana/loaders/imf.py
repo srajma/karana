@@ -64,8 +64,8 @@ def load_imf_charts(
                 f"Series code '{code}' has inconsistent indicator descriptions."
             )
 
-        frame = subset[["SERIES_CODE", *year_columns]].copy()
-        frame.rename(columns={"SERIES_CODE": "Region"}, inplace=True)
+        frame = subset[["COUNTRY", *year_columns]].copy()
+        frame.rename(columns={"COUNTRY": "Region"}, inplace=True)
 
         for column in year_columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
