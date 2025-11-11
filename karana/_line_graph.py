@@ -231,7 +231,7 @@ class LineGraph:
 
     }}
     .karana-container {{
-      max-width: 960px;
+      max-width: 1180px;
       margin: 0 auto;
       background: #ffffff;
       border-radius: 12px;
@@ -246,7 +246,7 @@ class LineGraph:
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }}
     .chart-and-legend {{
       display: flex;
@@ -260,7 +260,7 @@ class LineGraph:
       align-items: center;
     }}
     label {{
-      font-weight: 600;
+      font-weight: 500;
       font-size: 0.95rem;
       min-width: 120px;
     }}
@@ -286,6 +286,7 @@ class LineGraph:
       border-radius: 999px;
       padding: 0.45rem 0.9rem;
       font-size: 0.9rem;
+      font-weight: 500;
       cursor: pointer;
       transition: background 0.2s ease, box-shadow 0.2s ease;
     }}
@@ -299,7 +300,7 @@ class LineGraph:
       gap: 0.5rem;
     }}
     .region-slot span {{
-      font-weight: 600;
+      font-weight: 500;
       color: #475569;
       min-width: 1.5rem;
       text-align: right;
@@ -317,7 +318,7 @@ class LineGraph:
       width: 100%;
     }}
     .expression-slot span {{
-      font-weight: 600;
+      font-weight: 500;
       color: #475569;
       min-width: 7rem;
     }}
@@ -388,14 +389,13 @@ class LineGraph:
       opacity: 0.85;
     }}
     .admin-legend-text {{
-      font-weight: 500;
+      font-weight: 450;
       color: #111827;
     }}
   </style>
 </head>
 <body>
   <div class="karana-container">
-    <h1 id="chart-title">{dataset_title}</h1>
     <div class="controls">
       <div class="control-group">
         <label for="dataset-select">Dataset</label>
@@ -413,6 +413,7 @@ class LineGraph:
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
+    <h1 id="chart-title">{dataset_title}</h1>
     <div class="chart-and-legend">
       <div id="chart"></div>
       <div id="admin-legend" class="admin-legend"></div>
@@ -1048,7 +1049,7 @@ class LineGraph:
             x1: value,
             y0: 0,
             y1: 1,
-            line: {{ color, width: 2, dash: "dot" }},
+            line: {{ color, width: 1, dash: "dot" }},
             layer: "above",
           }});
         }};

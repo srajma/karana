@@ -77,7 +77,7 @@ dfs = load_owid_charts(
     "gdp-per-capita-worldbank",
 ) | load_imf_charts("PPPPC.A", "NGDPRPPPPC.A", "NGDPDPC.A")
 
-page = karana.Plot("Per-capita income")
+page = karana.Plot("Per-capita income ratio comparison")
 
 graph_idn = karana.LineGraph(dfs)
 
