@@ -226,14 +226,16 @@ class LineGraph:
     }}
     body {{
       margin: 0;
-      padding: 1.5rem;
+      /*padding: 1.5rem;*/
+      background: #ffffff;
+
     }}
     .karana-container {{
       max-width: 960px;
       margin: 0 auto;
       background: #ffffff;
       border-radius: 12px;
-      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      /*box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);*/
       padding: 1.5rem 1.75rem 2rem;
     }}
     h1 {{

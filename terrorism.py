@@ -33,6 +33,5 @@ graph.administrations(INDIA_ADMINISTRATIONS)
 graph.titles({"terrorist-attacks": "Terrorist attacks", "terrorism-deaths": "Terrorism deaths"})
 
 page.add(graph)
-page.add(graph)
 
 page.show("../maps/terrorism.html")

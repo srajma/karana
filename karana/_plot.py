@@ -61,6 +61,7 @@ class Plot:
     body {{
       margin: 0;
       padding: 1.5rem;
+      background: #ffffff;
     }}
     h1 {{
       font-size: 1.5rem;
@@ -70,7 +71,7 @@ class Plot:
     .plot-container {{
       display: flex;
       flex-direction: column;
-      gap: 2rem;
+      /*gap: 2rem;*/
       max-width: 1100px;
       margin: 0 auto 2rem;
     }}
