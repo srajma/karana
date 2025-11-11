@@ -14,12 +14,19 @@ class Plot:
 
     def __init__(self, title: Optional[str] = None) -> None:
         self._title = title or "karana Plot"
-        self._entries: List[tuple[LineGraph, Optional[str]]] = []
+        self._entries: List[tuple[str, object]] = []
 
     def add(self, graph: LineGraph, *, title: Optional[str] = None) -> "Plot":
         if not isinstance(graph, LineGraph):
             raise TypeError("Plot.add expects a LineGraph instance.")
-        self._entries.append((graph, title))
+        # title parameter remains for backward compatibility but is ignored.
+        self._entries.append(("graph", graph))
+        return self
+
+    def html(self, markup: str) -> "Plot":
+        if not isinstance(markup, str):
+            raise TypeError("Plot.html expects a string of HTML markup.")
+        self._entries.append(("html", markup))
         return self
 
     def show(self, file_path: str, type: str = "html") -> Path:
@@ -29,12 +36,13 @@ class Plot:
         if not self._entries:
             raise ValueError("Plot has no graphs to render. Call add() first.")
 
-        frames = []
-        for graph, _ in self._entries:
-            graph_html = graph._render_html()
-            iframe_doc = html.escape(graph_html, quote=True)
-            frames.append(
-                f"""
+        blocks = []
+        for kind, payload in self._entries:
+            if kind == "graph":
+                graph_html = payload._render_html()  # type: ignore[attr-defined]
+                iframe_doc = html.escape(graph_html, quote=True)
+                blocks.append(
+                    f"""
     <iframe
       class="plot-frame"
       srcdoc="{iframe_doc}"
@@ -42,9 +50,13 @@ class Plot:
       sandbox="allow-scripts allow-same-origin"
     ></iframe>
     """
-            )
+                )
+            elif kind == "html":
+                blocks.append(f'\n    <div class="plot-html">{payload}</div>\n')
+            else:
+                raise ValueError("Unknown plot entry type encountered.")
 
-        frames_html = "\n".join(frames)
+        frames_html = "\n".join(blocks)
         title_text = html.escape(self._title)
 
         return f"""<!DOCTYPE html>
@@ -81,6 +93,12 @@ class Plot:
       min-height: 540px;
       background: transparent;
       display: block;
+    }}
+    .plot-html {{
+      width: 100%;
+      color: #1f2933;
+      font-size: 1rem;
+      line-height: 1.6;
     }}
   </style>
 </head>

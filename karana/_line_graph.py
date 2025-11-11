@@ -216,7 +216,7 @@ class LineGraph:
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>karana LineGraph</title>
+  <title>{dataset_title}</title>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     :root {{

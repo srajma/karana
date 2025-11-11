@@ -51,7 +51,7 @@ def test_line_graph_generates_html():
 
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
-    assert "karana LineGraph" in content
+    assert "<title>gdp_ppp</title>" in content
     assert "payload =" in content
     assert "+ Add Expression" in content
     assert "Remove series" in content or "Remove expression" in content
@@ -95,6 +95,7 @@ def test_plot_renders_multiple_graphs(tmp_path):
 
     plot = Plot("Example Plot")
     plot.add(graph_one)
+    plot.html("<p class='note'>Between the charts</p>")
     plot.add(graph_two)
 
     output_file = tmp_path / "plot.html"
@@ -103,6 +104,7 @@ def test_plot_renders_multiple_graphs(tmp_path):
     assert output_file.exists()
     html = output_file.read_text(encoding="utf-8")
     assert html.count("<iframe") == 2
+    assert "Between the charts" in html
     assert "Example Plot" in html
 
     second_file = tmp_path / "plot_via_helper.html"
