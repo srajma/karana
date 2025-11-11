@@ -1234,10 +1234,15 @@ class LineGraph:
     def _resolve_dataset_key(self, key: str) -> str:
         if key in self._datasets:
             return key
-        prefix = f"{key}:"
+        best_match: Optional[str] = None
+        best_length = -1
         for candidate in self._datasets:
-            if candidate.startswith(prefix):
-                return candidate
+            if candidate.startswith(key):
+                if len(candidate) > best_length:
+                    best_match = candidate
+                    best_length = len(candidate)
+        if best_match is not None:
+            return best_match
         raise KeyError(f"Unknown dataframe key '{key}'.")
 
     def _resolve_dataset_title(self, key: str) -> str:
