@@ -218,13 +218,15 @@ class LineGraph:
       flex: 1;
       min-width: 220px;
     }}
-    .remove-expression {{
+    .remove-expression,
+    .remove-region {{
       background: #e11d48;
       padding: 0.35rem 0.7rem;
       border-radius: 999px;
       font-size: 0.85rem;
     }}
-    .remove-expression:hover {{
+    .remove-expression:hover,
+    .remove-region:hover {{
       background: #be123c;
     }}
     .status-message {{
@@ -338,6 +340,21 @@ class LineGraph:
         }});
 
         slot.appendChild(select);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-region";
+        remove.textContent = "Remove";
+        remove.title = "Remove series";
+        remove.addEventListener("click", () => {{
+          if (state.regionNames.length <= 1) {{
+            statusMessage.textContent = "At least one series is required.";
+            return;
+          }}
+          removeRegionAt(idx);
+        }});
+        slot.appendChild(remove);
+
         regionContainer.appendChild(slot);
       }});
     }}
@@ -355,10 +372,37 @@ class LineGraph:
       updateChart();
     }}
 
+    function removeRegionAt(index) {{
+      state.regionNames.splice(index, 1);
+      updateChart();
+    }}
+
     function ensureExpressionsAvailable() {{
       if (!Array.isArray(state.expressions) || state.expressions.length === 0) {{
         state.expressions = ["1"];
       }}
+    }}
+
+    function expressionDisplayLabel(expression, regionSeries) {{
+      const tokens = tokenize(expression);
+      const parts = tokens.map((token) => {{
+        if (token === "(" || token === ")" || "+-*/".includes(token)) {{
+          return token;
+        }}
+        const numeric = Number(token);
+        if (!token.includes(".") && !Number.isNaN(numeric)) {{
+          const idx = numeric - 1;
+          if (idx >= 0 && idx < regionSeries.length) {{
+            return regionSeries[idx].name;
+          }}
+        }}
+        return token;
+      }});
+      let label = parts.join(" ");
+      label = label.replace(/\\s+([)])/g, "$1");
+      label = label.replace(/([(])\\s+/g, "$1");
+      label = label.replace(/\\s*([+\\-*/])\\s*/g, " $1 ");
+      return label.replace(/\\s+/g, " ").trim();
     }}
 
     function buildExpressionControls() {{
@@ -386,7 +430,7 @@ class LineGraph:
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "remove-expression";
-        remove.textContent = "×";
+        remove.textContent = "Remove";
         remove.title = "Remove expression";
         remove.addEventListener("click", () => {{
           if (state.expressions.length <= 1) {{
@@ -634,15 +678,16 @@ class LineGraph:
 
         const traces = trimmedExpressions.map((exprText, idx) => {{
           const values = evaluateExpression(exprText, regionSeries, years.length);
+          const label = expressionDisplayLabel(exprText, regionSeries) || `Expression ${{idx + 1}}`;
           return {{
             x: years,
             y: values,
             mode: "lines",
-            name: `Expression ${{idx + 1}}: ${{exprText}}`,
+            name: label,
             line: {{
               width: 3,
             }},
-            hovertemplate: `%{{x}}<br>Expression ${{idx + 1}}: %{{y}}<extra></extra>`,
+            hovertemplate: `%{{x}}<br>${{label}}: %{{y}}<extra></extra>`,
           }};
         }});
 

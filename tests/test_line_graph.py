@@ -36,4 +36,5 @@ def test_line_graph_generates_html():
     assert "karana LineGraph" in content
     assert "payload =" in content
     assert "+ Add Expression" in content
+    assert "Remove series" in content or "Remove expression" in content
 
