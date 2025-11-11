@@ -228,6 +228,11 @@ class LineGraph:
       gap: 1rem;
       margin-bottom: 1.5rem;
     }}
+    .chart-and-legend {{
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }}
     .control-group {{
       display: flex;
       flex-wrap: wrap;
@@ -317,8 +322,63 @@ class LineGraph:
       color: #dc2626;
     }}
     #chart {{
-      width: 100%;
+      flex: 1 1 0;
       min-height: 420px;
+    }}
+    .admin-legend {{
+      width: 220px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      padding: 0.75rem;
+      display: none;
+    }}
+    .admin-legend.is-visible {{
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }}
+    .admin-legend h2 {{
+      font-size: 1rem;
+      margin: 0 0 0.35rem;
+      color: #1f2937;
+    }}
+    .admin-legend-item {{
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      font-size: 0.9rem;
+      line-height: 1.2rem;
+      color: #334155;
+    }}
+    .admin-legend-color {{
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px dotted rgba(51, 65, 85, 0.4);
+      flex-shrink: 0;
+      position: relative;
+    }}
+    .admin-legend-color::after {{
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 2px;
+      background: currentColor;
+      opacity: 0.85;
+    }}
+    .admin-legend-text {{
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }}
+    .admin-legend-title {{
+      font-weight: 600;
+      color: #111827;
+    }}
+    .admin-legend-subtitle {{
+      font-size: 0.8rem;
+      color: #64748b;
     }}
   </style>
 </head>
@@ -342,7 +402,10 @@ class LineGraph:
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
-    <div id="chart"></div>
+    <div class="chart-and-legend">
+      <div id="chart"></div>
+      <div id="admin-legend" class="admin-legend"></div>
+    </div>
   </div>
 
   <script>
@@ -360,6 +423,7 @@ class LineGraph:
     const expressionContainer = document.getElementById("expression-list");
     const addExpressionButton = document.getElementById("add-expression");
     const statusMessage = document.getElementById("status-message");
+    const adminLegend = document.getElementById("admin-legend");
 
     function getDataset(key) {{
       return payload.datasets[key];
@@ -463,6 +527,58 @@ class LineGraph:
       if (!Array.isArray(state.expressions) || state.expressions.length === 0) {{
         state.expressions = ["1"];
       }}
+    }}
+
+    function buildAdministrationLegend(administrations) {{
+      if (!adminLegend) {{
+        return;
+      }}
+
+      if (!administrations || administrations.length === 0) {{
+        adminLegend.classList.remove("is-visible");
+        adminLegend.innerHTML = "";
+        return;
+      }}
+
+      adminLegend.classList.add("is-visible");
+      const header = document.createElement("h2");
+      header.textContent = "Administrations";
+
+      adminLegend.innerHTML = "";
+      adminLegend.appendChild(header);
+
+      administrations.forEach((admin) => {{
+        const item = document.createElement("div");
+        item.className = "admin-legend-item";
+
+        const colorSwatch = document.createElement("span");
+        colorSwatch.className = "admin-legend-color";
+        colorSwatch.style.color = admin.color || "#94a3b8";
+        item.appendChild(colorSwatch);
+
+        const textWrapper = document.createElement("div");
+        textWrapper.className = "admin-legend-text";
+
+        const title = document.createElement("span");
+        title.className = "admin-legend-title";
+        const nameText = admin.label || admin.party || "Unnamed";
+        title.textContent = nameText;
+        textWrapper.appendChild(title);
+
+        const partyPart = admin.label && admin.party ? " (" + admin.party + ")" : (admin.party || "");
+        const rangePart = admin.start && admin.end ? String(admin.start) + " - " + String(admin.end) : "";
+        const subtitleText = (partyPart || "") + ((partyPart && rangePart) ? " · " : "") + (rangePart || "");
+        const trimmedSubtitle = subtitleText.trim();
+        if (trimmedSubtitle) {{
+          const subtitle = document.createElement("span");
+          subtitle.className = "admin-legend-subtitle";
+          subtitle.textContent = trimmedSubtitle;
+          textWrapper.appendChild(subtitle);
+        }}
+
+        item.appendChild(textWrapper);
+        adminLegend.appendChild(item);
+      }});
     }}
 
     function expressionDisplayLabel(expression, regionSeries) {{
@@ -775,7 +891,7 @@ class LineGraph:
           }};
         }});
 
-        const shapes = administrations.map((admin) => {{
+        const rectangles = administrations.map((admin) => {{
           const fillcolor = admin.color || "#94a3b8";
           const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
           return {{
@@ -793,31 +909,81 @@ class LineGraph:
           }};
         }});
 
-        const annotations = administrations
-          .filter((admin) => admin.label || admin.party)
-          .map((admin) => {{
-            const baseText = admin.label || "";
-            const partyText = admin.party ? (baseText ? " (" + admin.party + ")" : admin.party) : "";
-            return {{
+        const boundaryLines = [];
+        const seenBoundaries = new Set();
+        administrations.forEach((admin) => {{
+          const color = admin.color || "#94a3b8";
+          const startKey = String(admin.start);
+          const endKey = String(admin.end);
+          if (!seenBoundaries.has(startKey)) {{
+            seenBoundaries.add(startKey);
+            boundaryLines.push({{
+              type: "line",
               xref: "x",
               yref: "paper",
-              x: admin.labelPosition || admin.start,
-              y: 1.04,
-              text: baseText + partyText,
-              showarrow: false,
-              align: "center",
-              font: {{ size: 11, color: "#1f2933" }},
-            }};
+              x0: admin.start,
+              x1: admin.start,
+              y0: 0,
+              y1: 1,
+              line: {{ color, width: 2, dash: "dot" }},
+              layer: "above",
+            }});
+          }}
+          if (!seenBoundaries.has(endKey)) {{
+            seenBoundaries.add(endKey);
+            boundaryLines.push({{
+              type: "line",
+              xref: "x",
+              yref: "paper",
+              x0: admin.end,
+              x1: admin.end,
+              y0: 0,
+              y1: 1,
+              line: {{ color, width: 2, dash: "dot" }},
+              layer: "above",
+            }});
+          }}
+        }});
+
+        const yValues = [];
+        traces.forEach((trace) => {{
+          trace.y.forEach((v) => {{
+            if (v != null && !Number.isNaN(v)) {{
+              yValues.push(v);
+            }}
           }});
+        }});
+
+        let yAxisConfig;
+        if (yValues.length === 0) {{
+          yAxisConfig = {{ title: "Value", autorange: true }};
+        }} else {{
+          const minValue = Math.min(...yValues);
+          const maxValue = Math.max(...yValues);
+          let lower = minValue;
+          let upper = maxValue;
+          if (lower === upper) {{
+            const padding = Math.max(1, Math.abs(lower) * 0.1);
+            lower -= padding;
+            upper += padding;
+          }} else {{
+            const span = upper - lower;
+            const padding = span * 0.08;
+            lower -= padding;
+            upper += padding;
+          }}
+          yAxisConfig = {{ title: "Value", range: [lower, upper], autorange: false }};
+        }}
+
+        buildAdministrationLegend(administrations);
 
         Plotly.react("chart", traces, {{
           margin: {{ l: 60, r: 30, t: 20, b: 60 }},
           hovermode: "x unified",
           legend: {{ orientation: "h", y: -0.2 }},
           xaxis: {{ title: "Year" }},
-          yaxis: {{ title: "Value" }},
-          shapes,
-          annotations,
+          yaxis: yAxisConfig,
+          shapes: [...rectangles, ...boundaryLines],
         }});
       }} catch (error) {{
         statusMessage.textContent = error.message;

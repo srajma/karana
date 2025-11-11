@@ -49,4 +49,6 @@ def test_line_graph_generates_html():
     assert "+ Add Expression" in content
     assert "Remove series" in content or "Remove expression" in content
     assert "Sample Admin" in content
+    assert "Administrations" in content
+    assert "admin-legend-item" in content
 
