@@ -1100,6 +1100,7 @@ class LineGraph:
           shapes: [...rectangles, ...boundaryLines],
           showlegend: true,
         }});
+        adjustParentFrame();
       }} catch (error) {{
         statusMessage.textContent = error.message;
         Plotly.purge("chart");
@@ -1133,11 +1134,27 @@ class LineGraph:
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
       buildExpressionControls();
-      updateChartTitle();
       updateChart();
+      adjustParentFrame();
     }}
 
     init();
+
+    function adjustParentFrame() {{
+      if (!window.frameElement) {{
+        return;
+      }}
+      const update = () => {{
+        window.frameElement.style.height = document.body.scrollHeight + "px";
+      }};
+      update();
+      if (typeof ResizeObserver === "function") {{
+        const observer = new ResizeObserver(update);
+        observer.observe(document.body);
+      }} else {{
+        window.addEventListener("load", update);
+      }}
+    }}
   </script>
 </body>
 </html>

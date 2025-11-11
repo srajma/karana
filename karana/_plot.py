@@ -68,7 +68,8 @@ class Plot:
       text-align: center;
     }}
     .plot-container {{
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 2rem;
       max-width: 1100px;
       margin: 0 auto 2rem;
@@ -76,10 +77,9 @@ class Plot:
     .plot-frame {{
       width: 100%;
       border: none;
-      border-radius: 12px;
       min-height: 540px;
-      background: #ffffff;
-      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.10);
+      background: transparent;
+      display: block;
     }}
   </style>
 </head>
