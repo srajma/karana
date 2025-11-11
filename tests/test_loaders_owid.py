@@ -98,6 +98,7 @@ def test_load_charts_combines_multiple(monkeypatch):
         "chart_b",
         value_columns={"chart_a": ["value_a"], "chart_b": ["value_b"]},
         key_prefix={"chart_a": "a", "chart_b": "b"},
+        use_cache=False,
     )
 
     assert set(datasets) == {"a:value_a", "b:value_b"}
@@ -125,6 +126,7 @@ def test_load_charts_detects_key_collisions(monkeypatch):
             "chart_b",
             value_columns=["value"],
             key_prefix="shared",
+            use_cache=False,
         )
 
 
@@ -155,9 +157,38 @@ def test_load_charts_default_slug_prefix(monkeypatch):
         "chart_a",
         "chart_b",
         value_columns=["value"],
+        use_cache=False,
     )
 
     assert set(datasets.keys()) == {"chart_a:value", "chart_b:value"}
+
+
+def test_load_chart_uses_cache(monkeypatch, tmp_path):
+    tidy = pd.DataFrame(
+        {
+            "entities": ["Alpha"],
+            "years": [2020],
+            "value": [1.0],
+        }
+    )
+    calls: list[str] = []
+
+    def fake_get_data(slug: str) -> pd.DataFrame:
+        calls.append(slug)
+        return tidy
+
+    monkeypatch.setattr("karana.loaders.owid.charts.get_data", fake_get_data)
+
+    cache_dir = tmp_path / "cache"
+
+    load_chart("cached-chart", value_columns=["value"], cache_dir=cache_dir)
+    assert calls == ["cached-chart"]
+    cache_file = cache_dir / "cached-chart.feather"
+    assert cache_file.exists()
+
+    calls.clear()
+    load_chart("cached-chart", value_columns=["value"], cache_dir=cache_dir)
+    assert calls == []
 
 
 @pytest.mark.integration

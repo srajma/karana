@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from pathlib import Path
 from typing import Dict, Iterable, Mapping, Sequence
 
 import pandas as pd  # type: ignore
 from owid.catalog import charts  # type: ignore
+
+
+_DEFAULT_CACHE_DIR = Path(__file__).resolve().parents[2] / ".cache" / "owid"
 
 
 class OWIDChartLoaderError(RuntimeError):
@@ -16,6 +20,8 @@ def load_chart(
     *,
     value_columns: Iterable[str] | None = None,
     key_prefix: str | None = None,
+    use_cache: bool = True,
+    cache_dir: Path | None = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Fetch a chart dataset from OWID and convert it into karana's wide-table format.
@@ -40,7 +46,7 @@ def load_chart(
         column per year, suited for :class:`karana.LineGraph`.
     """
 
-    tidy = charts.get_data(slug)
+    tidy = _load_tidy_chart(slug, use_cache=use_cache, cache_dir=cache_dir)
     return _convert_tidy_chart(
         slug,
         tidy,
@@ -53,6 +59,8 @@ def load_charts(
     *slugs: str,
     value_columns: Mapping[str, Iterable[str]] | Iterable[str] | None = None,
     key_prefix: Mapping[str, str] | str | None = None,
+    use_cache: bool = True,
+    cache_dir: Path | None = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Fetch multiple OWID charts and combine their datasets.
@@ -88,7 +96,13 @@ def load_charts(
         )
         prefix = key_prefix.get(slug) if isinstance(key_prefix, Mapping) else key_prefix
 
-        slug_datasets = load_chart(slug, value_columns=columns, key_prefix=prefix)
+        slug_datasets = load_chart(
+            slug,
+            value_columns=columns,
+            key_prefix=prefix,
+            use_cache=use_cache,
+            cache_dir=cache_dir,
+        )
 
         overlap = set(datasets).intersection(slug_datasets)
         if overlap:
@@ -100,6 +114,27 @@ def load_charts(
         datasets.update(slug_datasets)
 
     return datasets
+
+
+def _load_tidy_chart(
+    slug: str,
+    *,
+    use_cache: bool,
+    cache_dir: Path | None,
+) -> pd.DataFrame:
+    cache_root = cache_dir or _DEFAULT_CACHE_DIR
+    cache_path = cache_root / f"{slug}.feather"
+
+    if use_cache and cache_path.exists():
+        return pd.read_feather(cache_path)
+
+    tidy = charts.get_data(slug)
+
+    if use_cache:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tidy.reset_index(drop=True).to_feather(cache_path)
+
+    return tidy
 
 
 def _convert_tidy_chart(

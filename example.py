@@ -1,5 +1,6 @@
 import karana
-import karana.loaders.owid as owid
+from karana.loaders import load_owid_charts
+from karana import series
 
 INDIA_ADMINISTRATIONS = [
     {"start": 1947, "end": 1964, "PM": "Nehru", "party": "INC", "color": "#00AEEF"},
@@ -20,16 +21,12 @@ INDIA_ADMINISTRATIONS = [
 ]
 
 
-terror_attacks = owid.load_chart("terrorist-attacks")
-terrorism_deaths = owid.load_chart("terrorism-deaths")
+dfs = load_owid_charts("terrorist-attacks", "terrorism-deaths")
 
-# graph = karana.LineGraph({
-#     "terror-attacks": terror_attacks,
-#     "terrorism-deaths": terrorism_deaths,
-# })
+graph = karana.LineGraph(dfs)
 
-# graph.default_df("terror-attacks")
-# graph.administrations(INDIA_ADMINISTRATIONS)
+graph.default_df("terrorism-deaths")
+graph.default_exp(series("India") / series("World"))
+graph.administrations(INDIA_ADMINISTRATIONS)
 
-# graph.show("terrorism.html")
-print(terror_attacks)
+graph.show("terrorism.html")

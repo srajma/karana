@@ -149,10 +149,10 @@
     }
     .admin-legend-item {
       display: flex;
-      gap: 0.6rem;
+      gap: 0.5rem;
       align-items: center;
-      font-size: 0.9rem;
-      line-height: 1.2rem;
+      font-size: 0.75rem;
+      line-height: 1rem;
       color: #334155;
     }
     .admin-legend-color {
@@ -172,17 +172,8 @@
       opacity: 0.85;
     }
     .admin-legend-text {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-    .admin-legend-title {
-      font-weight: 600;
+      font-weight: 500;
       color: #111827;
-    }
-    .admin-legend-subtitle {
-      font-size: 0.8rem;
-      color: #64748b;
     }
   </style>
 </head>
@@ -360,25 +351,11 @@
         colorSwatch.style.color = admin.color || "#94a3b8";
         item.appendChild(colorSwatch);
 
-        const textWrapper = document.createElement("div");
+        const textWrapper = document.createElement("span");
         textWrapper.className = "admin-legend-text";
-
-        const title = document.createElement("span");
-        title.className = "admin-legend-title";
-        const nameText = admin.label || admin.party || "Unnamed";
-        title.textContent = nameText;
-        textWrapper.appendChild(title);
-
-        const partyPart = admin.label && admin.party ? " (" + admin.party + ")" : (admin.party || "");
-        const rangePart = admin.start && admin.end ? String(admin.start) + " - " + String(admin.end) : "";
-        const subtitleText = (partyPart || "") + ((partyPart && rangePart) ? " · " : "") + (rangePart || "");
-        const trimmedSubtitle = subtitleText.trim();
-        if (trimmedSubtitle) {
-          const subtitle = document.createElement("span");
-          subtitle.className = "admin-legend-subtitle";
-          subtitle.textContent = trimmedSubtitle;
-          textWrapper.appendChild(subtitle);
-        }
+        const baseName = admin.label || admin.party || "Unnamed";
+        const partyLabel = admin.party && baseName ? " (" + admin.party + ")" : admin.party ? admin.party : "";
+        textWrapper.textContent = baseName + partyLabel;
 
         item.appendChild(textWrapper);
         adminLegend.appendChild(item);
