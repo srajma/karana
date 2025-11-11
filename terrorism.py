@@ -26,7 +26,8 @@ dfs = load_owid_charts("terrorist-attacks", "terrorism-deaths")
 graph = karana.LineGraph(dfs)
 
 graph.default_df("terrorism-deaths")
-graph.default_exp(series("India") / series("World"))
+graph.default_exp(series("India"))
 graph.administrations(INDIA_ADMINISTRATIONS)
+graph.titles({"terrorist-attacks": "Terrorist attacks", "terrorism-deaths": "Terrorism deaths"})
 
-graph.show("terrorism.html")
+graph.show("../maps/terrorism.html")

@@ -110,9 +110,11 @@ class LineGraph:
         if not records:
             raise ValueError("administrations requires at least one record.")
 
-        target_dataset = dataset or self._default_df or next(iter(self._datasets))
-        if target_dataset not in self._datasets:
-            raise KeyError(f"Unknown dataset key '{target_dataset}' for administrations().")
+        if dataset is None:
+            target_keys = list(self._datasets.keys())
+        else:
+            resolved = self._resolve_dataset_key(str(dataset))
+            target_keys = [resolved]
 
         processed: List[dict[str, Any]] = []
         for record in records:
@@ -141,11 +143,15 @@ class LineGraph:
             )
             party = record.get("party") or record.get("affiliation")
             color = record.get("color") or "#94a3b8"
+            opacity_value: Optional[float]
             opacity = record.get("opacity")
-            try:
-                opacity_value = float(opacity) if opacity is not None else None
-            except (TypeError, ValueError):
-                raise ValueError(f"Invalid opacity value {opacity!r} for administration.") from None
+            if opacity is None:
+                opacity_value = None
+            else:
+                try:
+                    opacity_value = float(opacity)
+                except (TypeError, ValueError):
+                    raise ValueError(f"Invalid opacity value {opacity!r} for administration.") from None
 
             processed.append(
                 {
@@ -158,7 +164,8 @@ class LineGraph:
                 }
             )
 
-        self._administrations[target_dataset] = processed
+        for key in target_keys:
+            self._administrations[key] = [entry.copy() for entry in processed]
         return self
 
     # ------------------------------------------------------------------------------------
