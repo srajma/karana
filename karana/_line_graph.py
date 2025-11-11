@@ -857,6 +857,12 @@ class LineGraph:
         buildRegionControls();
 
         const years = dataset.years;
+        const numericYears = years.map((year) => {{
+          const value = Number(year);
+          return Number.isNaN(value) ? null : value;
+        }});
+        const useNumericYears = numericYears.every((value) => value !== null);
+        const baseXValues = useNumericYears ? numericYears : years;
         const regionSeries = state.regionNames.map((name, idx) => {{
           const values = dataset.regions[name];
           if (!values) {{
@@ -880,7 +886,7 @@ class LineGraph:
           const values = evaluateExpression(exprText, regionSeries, years.length);
           const label = expressionDisplayLabel(exprText, regionSeries) || `Expression ${{idx + 1}}`;
           return {{
-            x: years,
+            x: baseXValues,
             y: values,
             mode: "lines",
             name: label,
@@ -891,64 +897,139 @@ class LineGraph:
           }};
         }});
 
-        const rectangles = administrations.map((admin) => {{
-          const fillcolor = admin.color || "#94a3b8";
-          const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
-          return {{
-            type: "rect",
-            xref: "x",
-            yref: "paper",
-            x0: admin.start,
-            x1: admin.end,
-            y0: 0,
-            y1: 1,
-            fillcolor,
-            opacity,
-            line: {{ width: 0 }},
-            layer: "below",
-          }};
+        const availabilityMask = new Array(baseXValues.length).fill(false);
+        traces.forEach((trace) => {{
+          trace.y.forEach((value, index) => {{
+            if (value != null && Number.isFinite(value)) {{
+              availabilityMask[index] = true;
+            }}
+          }});
         }});
 
-        const boundaryLines = [];
-        const seenBoundaries = new Set();
-        administrations.forEach((admin) => {{
-          const color = admin.color || "#94a3b8";
-          const startKey = String(admin.start);
-          const endKey = String(admin.end);
-          if (!seenBoundaries.has(startKey)) {{
-            seenBoundaries.add(startKey);
-            boundaryLines.push({{
-              type: "line",
+        let sliceStartIndex = availabilityMask.indexOf(true);
+        let sliceEndIndex = availabilityMask.lastIndexOf(true);
+        if (sliceStartIndex === -1 || sliceEndIndex === -1) {{
+          sliceStartIndex = 0;
+          sliceEndIndex = baseXValues.length - 1;
+        }}
+
+        const trimmedXValues = baseXValues.slice(sliceStartIndex, sliceEndIndex + 1);
+        traces.forEach((trace) => {{
+          trace.x = trace.x.slice(sliceStartIndex, sliceEndIndex + 1);
+          trace.y = trace.y.slice(sliceStartIndex, sliceEndIndex + 1);
+        }});
+
+        const hasTrimmedDomain = trimmedXValues.length > 0;
+        const xRangeMin = hasTrimmedDomain ? trimmedXValues[0] : baseXValues[0];
+        const xRangeMax = hasTrimmedDomain
+          ? trimmedXValues[trimmedXValues.length - 1]
+          : baseXValues[baseXValues.length - 1];
+
+        const xAxisConfig = {{ title: "Year" }};
+        if (useNumericYears) {{
+          xAxisConfig.type = "linear";
+          xAxisConfig.tickformat = "d";
+        }} else {{
+          xAxisConfig.type = "category";
+        }}
+        if (hasTrimmedDomain) {{
+          xAxisConfig.range = [xRangeMin, xRangeMax];
+        }}
+
+        const toNumericOrNull = (value) => {{
+          const numeric = Number(value);
+          return Number.isNaN(numeric) ? null : numeric;
+        }};
+
+        const rectangles = administrations
+          .map((admin) => {{
+            const fillcolor = admin.color || "#94a3b8";
+            const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
+            if (useNumericYears) {{
+              const startNumeric = toNumericOrNull(admin.start);
+              const endNumeric = toNumericOrNull(admin.end);
+              if (startNumeric == null || endNumeric == null) {{
+                return null;
+              }}
+              if (startNumeric > xRangeMax || endNumeric < xRangeMin) {{
+                return null;
+              }}
+              return {{
+                type: "rect",
+                xref: "x",
+                yref: "paper",
+                x0: Math.max(startNumeric, xRangeMin),
+                x1: Math.min(endNumeric, xRangeMax),
+                y0: 0,
+                y1: 1,
+                fillcolor,
+                opacity,
+                line: {{ width: 0 }},
+                layer: "below",
+              }};
+            }}
+
+            return {{
+              type: "rect",
               xref: "x",
               yref: "paper",
               x0: admin.start,
-              x1: admin.start,
-              y0: 0,
-              y1: 1,
-              line: {{ color, width: 2, dash: "dot" }},
-              layer: "above",
-            }});
-          }}
-          if (!seenBoundaries.has(endKey)) {{
-            seenBoundaries.add(endKey);
-            boundaryLines.push({{
-              type: "line",
-              xref: "x",
-              yref: "paper",
-              x0: admin.end,
               x1: admin.end,
               y0: 0,
               y1: 1,
-              line: {{ color, width: 2, dash: "dot" }},
-              layer: "above",
-            }});
+              fillcolor,
+              opacity,
+              line: {{ width: 0 }},
+              layer: "below",
+            }};
+          }})
+          .filter(Boolean);
+
+        const boundaryLines = [];
+        const seenBoundaries = new Set();
+        const addBoundary = (value, key, color) => {{
+          if (value == null) {{
+            return;
           }}
+          if (seenBoundaries.has(key)) {{
+            return;
+          }}
+          seenBoundaries.add(key);
+          boundaryLines.push({{
+            type: "line",
+            xref: "x",
+            yref: "paper",
+            x0: value,
+            x1: value,
+            y0: 0,
+            y1: 1,
+            line: {{ color, width: 2, dash: "dot" }},
+            layer: "above",
+          }});
+        }};
+
+        administrations.forEach((admin) => {{
+          const color = admin.color || "#94a3b8";
+          if (useNumericYears) {{
+            const startNumeric = toNumericOrNull(admin.start);
+            const endNumeric = toNumericOrNull(admin.end);
+            if (startNumeric != null && startNumeric >= xRangeMin && startNumeric <= xRangeMax) {{
+              addBoundary(startNumeric, "start-" + startNumeric, color);
+            }}
+            if (endNumeric != null && endNumeric >= xRangeMin && endNumeric <= xRangeMax) {{
+              addBoundary(endNumeric, "end-" + endNumeric, color);
+            }}
+            return;
+          }}
+
+          addBoundary(admin.start, "start-" + admin.start, color);
+          addBoundary(admin.end, "end-" + admin.end, color);
         }});
 
         const yValues = [];
         traces.forEach((trace) => {{
           trace.y.forEach((v) => {{
-            if (v != null && !Number.isNaN(v)) {{
+            if (v != null && Number.isFinite(v)) {{
               yValues.push(v);
             }}
           }});
@@ -981,7 +1062,7 @@ class LineGraph:
           margin: {{ l: 60, r: 30, t: 20, b: 60 }},
           hovermode: "x unified",
           legend: {{ orientation: "h", y: -0.2 }},
-          xaxis: {{ title: "Year" }},
+          xaxis: xAxisConfig,
           yaxis: yAxisConfig,
           shapes: [...rectangles, ...boundaryLines],
         }});

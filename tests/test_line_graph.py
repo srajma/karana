@@ -5,6 +5,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+import numpy as np  # noqa: E402
 import pandas as pd  # type: ignore  # noqa: E402
 
 from karana import LineGraph, series  # noqa: E402
@@ -14,9 +15,15 @@ def test_line_graph_generates_html():
     df = pd.DataFrame(
         {
             "Region": ["India", "World", "China"],
-            2018: [90, 180, 120],
-            2019: [100, 200, 140],
-            2020: [110, 220, 160],
+            2012: [np.nan, np.nan, np.nan],
+            2013: [np.nan, np.nan, np.nan],
+            2014: [np.nan, np.nan, np.nan],
+            2015: [90, 180, 120],
+            2016: [100, 200, 140],
+            2017: [110, 220, 160],
+            2018: [120, 240, 180],
+            2019: [np.nan, 260, np.nan],
+            2020: [np.nan, np.nan, np.nan],
         }
     )
 
@@ -51,4 +58,5 @@ def test_line_graph_generates_html():
     assert "Sample Admin" in content
     assert "Administrations" in content
     assert "admin-legend-item" in content
+    assert "xAxisConfig.range = [xRangeMin, xRangeMax];" in content
 
