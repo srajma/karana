@@ -22,7 +22,10 @@ def test_line_graph_generates_html():
 
     chart = LineGraph({"gdp_ppp": df})
     chart.default_df("gdp_ppp")
-    chart.default_exp(series("India") / series("World"))
+    chart.default_exp(
+        series("India") / series("World"),
+        series("China") / series("World"),
+    )
 
     output_file = PROJECT_ROOT / "test_line_graph_output.html"
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -32,4 +35,5 @@ def test_line_graph_generates_html():
     content = output_file.read_text(encoding="utf-8")
     assert "karana LineGraph" in content
     assert "payload =" in content
+    assert "+ Add Expression" in content
 

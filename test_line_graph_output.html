@@ -83,6 +83,36 @@
       min-width: 1.5rem;
       text-align: right;
     }
+    .expression-list {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 0.5rem;
+    }
+    .expression-slot {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .expression-slot span {
+      font-weight: 600;
+      color: #475569;
+      min-width: 7rem;
+    }
+    .expression-slot input {
+      flex: 1;
+      min-width: 220px;
+    }
+    .remove-expression {
+      background: #e11d48;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    .remove-expression:hover {
+      background: #be123c;
+    }
     .status-message {
       min-height: 1.25rem;
       font-size: 0.9rem;
@@ -108,8 +138,9 @@
         <button id="add-region" type="button">+ Add Series</button>
       </div>
       <div class="control-group">
-        <label for="expression-input">Expression</label>
-        <input id="expression-input" type="text" placeholder="e.g. 1/(1+2)" />
+        <label>Expressions</label>
+        <div id="expression-list" class="expression-list"></div>
+        <button id="add-expression" type="button">+ Add Expression</button>
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
@@ -117,18 +148,19 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2018", "2019", "2020"], "regions": {"India": [90.0, 100.0, 110.0], "World": [180.0, 200.0, 220.0], "China": [120.0, 140.0, 160.0]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World"], "expression": "1 / 2"}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2018", "2019", "2020"], "regions": {"India": [90.0, 100.0, 110.0], "World": [180.0, 200.0, 220.0], "China": [120.0, 140.0, 160.0]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
       regionNames: [...payload.defaults.seriesNames],
-      expression: payload.defaults.expression,
+      expressions: [...payload.defaults.expressions],
     };
 
     const datasetSelect = document.getElementById("dataset-select");
     const regionContainer = document.getElementById("region-selects");
     const addRegionButton = document.getElementById("add-region");
-    const expressionInput = document.getElementById("expression-input");
+    const expressionContainer = document.getElementById("expression-list");
+    const addExpressionButton = document.getElementById("add-expression");
     const statusMessage = document.getElementById("status-message");
 
     function getDataset(key) {
@@ -206,6 +238,55 @@
       const unused = available.find((name) => !state.regionNames.includes(name));
       state.regionNames.push(unused || available[0]);
       buildRegionControls();
+      updateChart();
+    }
+
+    function ensureExpressionsAvailable() {
+      if (!Array.isArray(state.expressions) || state.expressions.length === 0) {
+        state.expressions = ["1"];
+      }
+    }
+
+    function buildExpressionControls() {
+      ensureExpressionsAvailable();
+      expressionContainer.innerHTML = "";
+
+      state.expressions.forEach((exprText, idx) => {
+        const slot = document.createElement("div");
+        slot.className = "expression-slot";
+
+        const label = document.createElement("span");
+        label.textContent = `Expression ${idx + 1}`;
+        slot.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "e.g. 1/(1+2)";
+        input.value = exprText;
+        input.addEventListener("input", () => {
+          state.expressions[idx] = input.value;
+          updateChart();
+        });
+        slot.appendChild(input);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-expression";
+        remove.textContent = "×";
+        remove.title = "Remove expression";
+        remove.addEventListener("click", () => {
+          if (state.expressions.length <= 1) {
+            statusMessage.textContent = "At least one expression is required.";
+            return;
+          }
+          state.expressions.splice(idx, 1);
+          buildExpressionControls();
+          updateChart();
+        });
+        slot.appendChild(remove);
+
+        expressionContainer.appendChild(slot);
+      });
     }
 
     function tokenize(expression) {
@@ -416,6 +497,7 @@
         statusMessage.textContent = "";
         const dataset = getDataset(state.datasetKey);
         ensureRegionSelectionsAvailable(dataset);
+        ensureExpressionsAvailable();
         buildRegionControls();
 
         const years = dataset.years;
@@ -431,37 +513,23 @@
           };
         });
 
-        const expressionValues = evaluateExpression(
-          state.expression,
-          regionSeries,
-          years.length
-        );
+        const trimmedExpressions = state.expressions.map((expr) => expr.trim());
+        if (trimmedExpressions.some((expr) => expr.length === 0)) {
+          throw new Error("Expressions cannot be empty.");
+        }
 
-        const traces = [];
-        regionSeries.forEach((series, idx) => {
-          traces.push({
+        const traces = trimmedExpressions.map((exprText, idx) => {
+          const values = evaluateExpression(exprText, regionSeries, years.length);
+          return {
             x: years,
-            y: series.values,
+            y: values,
             mode: "lines",
-            name: `${idx + 1} = ${series.name}`,
+            name: `Expression ${idx + 1}: ${exprText}`,
             line: {
-              width: 1.5,
-              dash: "dot",
+              width: 3,
             },
-            hovertemplate: `%{x}<br>${series.name}: %{y}<extra></extra>`,
-          });
-        });
-
-        traces.push({
-          x: years,
-          y: expressionValues,
-          mode: "lines",
-          name: "Expression",
-          line: {
-            width: 3,
-            color: "#1d4ed8",
-          },
-          hovertemplate: `%{x}<br>Expression: %{y}<extra></extra>`,
+            hovertemplate: `%{x}<br>Expression ${idx + 1}: %{y}<extra></extra>`,
+          };
         });
 
         Plotly.react("chart", traces, {
@@ -482,16 +550,18 @@
       const dataset = getDataset(state.datasetKey);
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
+      buildExpressionControls();
       updateChart();
     });
 
     addRegionButton.addEventListener("click", () => {
       addRegionSlot();
-      updateChart();
     });
 
-    expressionInput.addEventListener("input", () => {
-      state.expression = expressionInput.value;
+    addExpressionButton.addEventListener("click", () => {
+      ensureExpressionsAvailable();
+      state.expressions.push("1");
+      buildExpressionControls();
       updateChart();
     });
 
@@ -500,7 +570,7 @@
       const dataset = getDataset(state.datasetKey);
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
-      expressionInput.value = state.expression;
+      buildExpressionControls();
       updateChart();
     }
 

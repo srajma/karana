@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence as _Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional
 
-import pandas as pd
+import pandas as pd  # type: ignore
 
 from ._expression import Expression
 
@@ -36,7 +37,7 @@ class LineGraph:
             self._datasets[key] = self._convert_df(df, key)
 
         self._default_df: Optional[str] = None
-        self._default_expr: Optional[Expression] = None
+        self._default_exprs: Optional[List[Expression]] = None
 
     # --------------------------------------------------------------------- configuration
 
@@ -46,10 +47,33 @@ class LineGraph:
         self._default_df = key
         return self
 
-    def default_exp(self, expr: Expression) -> "LineGraph":
-        if not isinstance(expr, Expression):
-            raise TypeError("default_exp expects an Expression (build with karana.series).")
-        self._default_expr = expr
+    def default_exp(self, *exprs: Expression) -> "LineGraph":
+        if not exprs:
+            raise ValueError("default_exp requires at least one expression.")
+
+        if len(exprs) == 1:
+            first = exprs[0]
+            if isinstance(first, Expression):
+                expr_list = [first]
+            elif isinstance(first, _Sequence) and not isinstance(first, (str, bytes)):
+                expr_list = list(first)
+            else:
+                raise TypeError(
+                    "default_exp expects Expression instances (build with karana.series)."
+                )
+        else:
+            expr_list = list(exprs)
+
+        if not expr_list:
+            raise ValueError("default_exp requires at least one expression.")
+
+        for expr in expr_list:
+            if not isinstance(expr, Expression):
+                raise TypeError(
+                    "default_exp expects Expression instances (build with karana.series)."
+                )
+
+        self._default_exprs = list(expr_list)
         return self
 
     # ------------------------------------------------------------------------------------
@@ -68,7 +92,7 @@ class LineGraph:
     # ------------------------------------------------------------------------------------
 
     def _render_html(self) -> str:
-        default_key, default_series_names, default_expression = self._determine_defaults()
+        default_key, default_series_names, default_expressions = self._determine_defaults()
 
         payload = {
             "datasets": {
@@ -81,7 +105,7 @@ class LineGraph:
             "defaults": {
                 "dataset": default_key,
                 "seriesNames": default_series_names,
-                "expression": default_expression,
+                "expressions": default_expressions,
             },
         }
 
@@ -173,6 +197,36 @@ class LineGraph:
       min-width: 1.5rem;
       text-align: right;
     }}
+    .expression-list {{
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 0.5rem;
+    }}
+    .expression-slot {{
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }}
+    .expression-slot span {{
+      font-weight: 600;
+      color: #475569;
+      min-width: 7rem;
+    }}
+    .expression-slot input {{
+      flex: 1;
+      min-width: 220px;
+    }}
+    .remove-expression {{
+      background: #e11d48;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }}
+    .remove-expression:hover {{
+      background: #be123c;
+    }}
     .status-message {{
       min-height: 1.25rem;
       font-size: 0.9rem;
@@ -198,8 +252,9 @@ class LineGraph:
         <button id="add-region" type="button">+ Add Series</button>
       </div>
       <div class="control-group">
-        <label for="expression-input">Expression</label>
-        <input id="expression-input" type="text" placeholder="e.g. 1/(1+2)" />
+        <label>Expressions</label>
+        <div id="expression-list" class="expression-list"></div>
+        <button id="add-expression" type="button">+ Add Expression</button>
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
@@ -212,13 +267,14 @@ class LineGraph:
     const state = {{
       datasetKey: payload.defaults.dataset,
       regionNames: [...payload.defaults.seriesNames],
-      expression: payload.defaults.expression,
+      expressions: [...payload.defaults.expressions],
     }};
 
     const datasetSelect = document.getElementById("dataset-select");
     const regionContainer = document.getElementById("region-selects");
     const addRegionButton = document.getElementById("add-region");
-    const expressionInput = document.getElementById("expression-input");
+    const expressionContainer = document.getElementById("expression-list");
+    const addExpressionButton = document.getElementById("add-expression");
     const statusMessage = document.getElementById("status-message");
 
     function getDataset(key) {{
@@ -296,6 +352,55 @@ class LineGraph:
       const unused = available.find((name) => !state.regionNames.includes(name));
       state.regionNames.push(unused || available[0]);
       buildRegionControls();
+      updateChart();
+    }}
+
+    function ensureExpressionsAvailable() {{
+      if (!Array.isArray(state.expressions) || state.expressions.length === 0) {{
+        state.expressions = ["1"];
+      }}
+    }}
+
+    function buildExpressionControls() {{
+      ensureExpressionsAvailable();
+      expressionContainer.innerHTML = "";
+
+      state.expressions.forEach((exprText, idx) => {{
+        const slot = document.createElement("div");
+        slot.className = "expression-slot";
+
+        const label = document.createElement("span");
+        label.textContent = `Expression ${{idx + 1}}`;
+        slot.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "e.g. 1/(1+2)";
+        input.value = exprText;
+        input.addEventListener("input", () => {{
+          state.expressions[idx] = input.value;
+          updateChart();
+        }});
+        slot.appendChild(input);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-expression";
+        remove.textContent = "×";
+        remove.title = "Remove expression";
+        remove.addEventListener("click", () => {{
+          if (state.expressions.length <= 1) {{
+            statusMessage.textContent = "At least one expression is required.";
+            return;
+          }}
+          state.expressions.splice(idx, 1);
+          buildExpressionControls();
+          updateChart();
+        }});
+        slot.appendChild(remove);
+
+        expressionContainer.appendChild(slot);
+      }});
     }}
 
     function tokenize(expression) {{
@@ -506,6 +611,7 @@ class LineGraph:
         statusMessage.textContent = "";
         const dataset = getDataset(state.datasetKey);
         ensureRegionSelectionsAvailable(dataset);
+        ensureExpressionsAvailable();
         buildRegionControls();
 
         const years = dataset.years;
@@ -521,37 +627,23 @@ class LineGraph:
           }};
         }});
 
-        const expressionValues = evaluateExpression(
-          state.expression,
-          regionSeries,
-          years.length
-        );
+        const trimmedExpressions = state.expressions.map((expr) => expr.trim());
+        if (trimmedExpressions.some((expr) => expr.length === 0)) {{
+          throw new Error("Expressions cannot be empty.");
+        }}
 
-        const traces = [];
-        regionSeries.forEach((series, idx) => {{
-          traces.push({{
+        const traces = trimmedExpressions.map((exprText, idx) => {{
+          const values = evaluateExpression(exprText, regionSeries, years.length);
+          return {{
             x: years,
-            y: series.values,
+            y: values,
             mode: "lines",
-            name: `${{idx + 1}} = ${{series.name}}`,
+            name: `Expression ${{idx + 1}}: ${{exprText}}`,
             line: {{
-              width: 1.5,
-              dash: "dot",
+              width: 3,
             }},
-            hovertemplate: `%{{x}}<br>${{series.name}}: %{{y}}<extra></extra>`,
-          }});
-        }});
-
-        traces.push({{
-          x: years,
-          y: expressionValues,
-          mode: "lines",
-          name: "Expression",
-          line: {{
-            width: 3,
-            color: "#1d4ed8",
-          }},
-          hovertemplate: `%{{x}}<br>Expression: %{{y}}<extra></extra>`,
+            hovertemplate: `%{{x}}<br>Expression ${{idx + 1}}: %{{y}}<extra></extra>`,
+          }};
         }});
 
         Plotly.react("chart", traces, {{
@@ -572,16 +664,18 @@ class LineGraph:
       const dataset = getDataset(state.datasetKey);
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
+      buildExpressionControls();
       updateChart();
     }});
 
     addRegionButton.addEventListener("click", () => {{
       addRegionSlot();
-      updateChart();
     }});
 
-    expressionInput.addEventListener("input", () => {{
-      state.expression = expressionInput.value;
+    addExpressionButton.addEventListener("click", () => {{
+      ensureExpressionsAvailable();
+      state.expressions.push("1");
+      buildExpressionControls();
       updateChart();
     }});
 
@@ -590,7 +684,7 @@ class LineGraph:
       const dataset = getDataset(state.datasetKey);
       ensureRegionSelectionsAvailable(dataset);
       buildRegionControls();
-      expressionInput.value = state.expression;
+      buildExpressionControls();
       updateChart();
     }}
 
@@ -601,29 +695,37 @@ class LineGraph:
 """
         return html
 
-    def _determine_defaults(self) -> tuple[str, List[str], str]:
+    def _determine_defaults(self) -> tuple[str, List[str], List[str]]:
         default_key = self._default_df or next(iter(self._datasets))
         dataset = self._datasets[default_key]
         if not dataset.regions:
             raise ValueError(f"Dataset '{default_key}' has no regions to plot.")
 
-        if self._default_expr is None:
+        if self._default_exprs is None:
             first_region = next(iter(dataset.regions))
             series_names = [first_region]
-            expression_text = "1"
+            expression_texts = ["1"]
         else:
-            series_names = self._default_expr.collect_series()
+            series_names: List[str] = []
+            seen: set[str] = set()
+            for expr in self._default_exprs:
+                for name in expr.collect_series():
+                    if name not in seen:
+                        seen.add(name)
+                        series_names.append(name)
             if not series_names:
-                raise ValueError("default_exp must reference at least one series.")
+                raise ValueError("default_exp expressions must reference at least one series.")
             missing = [name for name in series_names if name not in dataset.regions]
             if missing:
                 missing_str = ", ".join(missing)
                 raise KeyError(
                     f"Series referenced in default expression not found in default dataset '{default_key}': {missing_str}"
                 )
-            expression_text = self._default_expr.to_placeholder_expression(series_names)
+            expression_texts = [
+                expr.to_placeholder_expression(series_names) for expr in self._default_exprs
+            ]
 
-        return default_key, series_names, expression_text
+        return default_key, series_names, expression_texts
 
     def _convert_df(self, df: pd.DataFrame, key: str) -> _Dataset:
         if "Region" not in df.columns:
