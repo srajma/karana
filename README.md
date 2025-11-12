@@ -47,6 +47,20 @@ page.add(graph)
 page.html("<p class='note'>Custom HTML between the charts</p>")
 page.add(graph) # add another graph; here we're just adding another copy of the same
 
+# create scatter plot comparing datasets at a single year
+scatter_dfs = load_owid_charts("gdp-per-capita-worldbank", "life-expectancy")
+scatter = karana.ScatterPlot(scatter_dfs)
+scatter.default_axes(x="gdp-per-capita-worldbank", y="life-expectancy")
+scatter.default_regions("India", "China", "Bangladesh")
+scatter.default_year(2019)
+scatter.titles(
+    {
+        "gdp-per-capita-worldbank": "GDP per capita (PPP, World Bank)",
+        "life-expectancy": "Life expectancy",
+    }
+)
+page.add(scatter)
+
 # graph.show("../maps/terrorism.html") # to export a Graph directly rather than a Plot
 page.show("../maps/terrorism.html")
 ```

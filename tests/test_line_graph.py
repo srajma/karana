@@ -130,3 +130,21 @@ def test_default_exp_series_prefix_matching():
     assert series_names == ["India (PPP)"]
     # expression should map to placeholder using the reference name
     assert expressions == ["1"]
+
+
+def test_default_df_prefix_matching():
+    df = pd.DataFrame(
+        {
+            "Region": ["Alpha", "Beta"],
+            2000: [10, 20],
+            2001: [15, 25],
+        }
+    )
+
+    chart = LineGraph({"gdp-per-capita-worldbank-constant-usd": df})
+    chart.default_df("gdp-per-capita-worldbank")
+
+    key, series_names, expressions = chart._determine_defaults()
+    assert key == "gdp-per-capita-worldbank-constant-usd"
+    assert series_names == ["Alpha"]
+    assert expressions == ["1"]
