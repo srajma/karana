@@ -132,7 +132,7 @@ def test_default_exp_series_prefix_matching():
     assert key == "economics"
     assert series_names == ["India (PPP)"]
     # expression should map to placeholder using the reference name
-    assert expressions == ["1"]
+    assert expressions == ["A"]
 
 
 def test_default_df_prefix_matching():
@@ -150,7 +150,7 @@ def test_default_df_prefix_matching():
     key, series_names, expressions = chart._determine_defaults()
     assert key == "gdp-per-capita-worldbank-constant-usd"
     assert series_names == ["Alpha"]
-    assert expressions == ["1"]
+    assert expressions == ["A"]
 
 
 def test_custom_title_overrides_mapping(tmp_path):

@@ -230,7 +230,7 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"], "scale": "log", "customTitle": null}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["A / B", "C / B"], "scale": "log", "customTitle": null}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
@@ -328,6 +328,21 @@
       return letters.reverse().join("");
     }
 
+    function letterCodeToIndex(code) {
+      if (typeof code !== "string" || code.length === 0) {
+        return -1;
+      }
+      const upper = code.trim().toUpperCase();
+      if (!/^[A-Z]+$/.test(upper)) {
+        return -1;
+      }
+      let value = 0;
+      for (let i = 0; i < upper.length; i += 1) {
+        value = value * 26 + (upper.charCodeAt(i) - 65 + 1);
+      }
+      return value - 1;
+    }
+
     function buildRegionControls() {
       regionContainer.innerHTML = "";
       const dataset = getDataset(state.datasetKey);
@@ -397,7 +412,7 @@
 
     function ensureExpressionsAvailable() {
       if (!Array.isArray(state.expressions) || state.expressions.length === 0) {
-        state.expressions = ["1"];
+        state.expressions = ["A"];
       }
     }
 
@@ -470,6 +485,15 @@
             return regionSeries[idx].name;
           }
         }
+        if (typeof token === "string") {
+          const upper = token.toUpperCase();
+          if (/^[A-Z]+$/.test(upper)) {
+            const idx = letterCodeToIndex(upper);
+            if (idx >= 0 && idx < regionSeries.length) {
+              return regionSeries[idx].name;
+            }
+          }
+        }
         return token;
       });
       let label = parts.join(" ");
@@ -533,6 +557,24 @@
         if ("+-*/()".includes(ch)) {
           tokens.push(ch);
           i += 1;
+          continue;
+        }
+        if ((ch >= "A" && ch <= "Z") || (ch >= "a" && ch <= "z")) {
+          let value = ch;
+          i += 1;
+          while (i < expression.length) {
+            const next = expression[i];
+            if (
+              (next >= "A" && next <= "Z") ||
+              (next >= "a" && next <= "z")
+            ) {
+              value += next;
+              i += 1;
+            } else {
+              break;
+            }
+          }
+          tokens.push(value.toUpperCase());
           continue;
         }
         if ((ch >= "0" && ch <= "9") || ch === ".") {
@@ -614,6 +656,15 @@
           }
           operators.push(token);
           expectOperand = true;
+          continue;
+        }
+        if (typeof token === "string" && /^[A-Z]+$/.test(token)) {
+          const index = letterCodeToIndex(token);
+          if (index < 0 || index >= regionCount) {
+            throw new Error("Expression references series '" + token + "' which is undefined.");
+          }
+          output.push({ type: "region", index });
+          expectOperand = false;
           continue;
         }
         // number literal (potentially region reference)

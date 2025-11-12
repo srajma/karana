@@ -562,6 +562,21 @@ class LineGraph:
       return letters.reverse().join("");
     }}
 
+    function letterCodeToIndex(code) {{
+      if (typeof code !== "string" || code.length === 0) {{
+        return -1;
+      }}
+      const upper = code.trim().toUpperCase();
+      if (!/^[A-Z]+$/.test(upper)) {{
+        return -1;
+      }}
+      let value = 0;
+      for (let i = 0; i < upper.length; i += 1) {{
+        value = value * 26 + (upper.charCodeAt(i) - 65 + 1);
+      }}
+      return value - 1;
+    }}
+
     function buildRegionControls() {{
       regionContainer.innerHTML = "";
       const dataset = getDataset(state.datasetKey);
@@ -631,7 +646,7 @@ class LineGraph:
 
     function ensureExpressionsAvailable() {{
       if (!Array.isArray(state.expressions) || state.expressions.length === 0) {{
-        state.expressions = ["1"];
+        state.expressions = ["A"];
       }}
     }}
 
@@ -704,6 +719,15 @@ class LineGraph:
             return regionSeries[idx].name;
           }}
         }}
+        if (typeof token === "string") {{
+          const upper = token.toUpperCase();
+          if (/^[A-Z]+$/.test(upper)) {{
+            const idx = letterCodeToIndex(upper);
+            if (idx >= 0 && idx < regionSeries.length) {{
+              return regionSeries[idx].name;
+            }}
+          }}
+        }}
         return token;
       }});
       let label = parts.join(" ");
@@ -767,6 +791,24 @@ class LineGraph:
         if ("+-*/()".includes(ch)) {{
           tokens.push(ch);
           i += 1;
+          continue;
+        }}
+        if ((ch >= "A" && ch <= "Z") || (ch >= "a" && ch <= "z")) {{
+          let value = ch;
+          i += 1;
+          while (i < expression.length) {{
+            const next = expression[i];
+            if (
+              (next >= "A" && next <= "Z") ||
+              (next >= "a" && next <= "z")
+            ) {{
+              value += next;
+              i += 1;
+            }} else {{
+              break;
+            }}
+          }}
+          tokens.push(value.toUpperCase());
           continue;
         }}
         if ((ch >= "0" && ch <= "9") || ch === ".") {{
@@ -848,6 +890,15 @@ class LineGraph:
           }}
           operators.push(token);
           expectOperand = true;
+          continue;
+        }}
+        if (typeof token === "string" && /^[A-Z]+$/.test(token)) {{
+          const index = letterCodeToIndex(token);
+          if (index < 0 || index >= regionCount) {{
+            throw new Error("Expression references series '" + token + "' which is undefined.");
+          }}
+          output.push({{ type: "region", index }});
+          expectOperand = false;
           continue;
         }}
         // number literal (potentially region reference)
@@ -1303,7 +1354,7 @@ class LineGraph:
         if self._default_exprs is None:
             first_region = next(iter(dataset.regions))
             resolved_series_names = [first_region]
-            expression_texts = ["1"]
+            expression_texts = ["A"]
         else:
             references: List[str] = []
             seen_refs: set[str] = set()

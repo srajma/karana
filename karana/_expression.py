@@ -23,6 +23,20 @@ def ensure_expression(value: ExpressionLike) -> "Expression":
     raise TypeError(f"Unsupported operand type {type(value)!r} for expression composition.")
 
 
+def _index_to_letter(index: int) -> str:
+    if index < 0:
+        raise ValueError("Index for placeholder must be non-negative.")
+    letters: List[str] = []
+    value = index
+    while True:
+        value, remainder = divmod(value, 26)
+        letters.append(chr(65 + remainder))
+        if value == 0:
+            break
+        value -= 1
+    return "".join(reversed(letters))
+
+
 class Expression:
     """
     Symbolic arithmetic tree that can be compiled into placeholder expressions.
@@ -68,9 +82,9 @@ class Expression:
 
     def to_placeholder_expression(self, series_order: Sequence[str]) -> str:
         """
-        Produce an infix expression string referencing entries in series_order (1-based).
+        Produce an infix expression string referencing entries in series_order using letter codes.
         """
-        mapping = {name: idx + 1 for idx, name in enumerate(series_order)}
+        mapping = {name: _index_to_letter(idx) for idx, name in enumerate(series_order)}
         return self._to_placeholder(mapping, parent_prec=0)
 
     # Internal traversal -----------------------------------------------------------------
