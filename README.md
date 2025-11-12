@@ -52,6 +52,32 @@ page.add(graph) # add another graph; here we're just adding another copy of the 
 page.show("../maps/terrorism.html")
 ```
 
+### scatter plots
+
+```python
+from karana import ScatterPlot
+from karana.loaders import load_owid_charts
+
+datasets = load_owid_charts(
+    "life-expectancy",
+    "gdp-per-capita-maddison-project-database",
+    "population",
+    "children-born-per-woman",
+)
+
+scatter = ScatterPlot(datasets)
+scatter.default_axes(
+    x="gdp-per-capita-maddison-project-database:gdp_per_capita_maddison_project_database",
+    y="life-expectancy:life_expectancy",
+)
+scatter.default_size("population:population")
+scatter.default_color("children-born-per-woman:children_born_per_woman")
+scatter.default_year(2019)
+scatter.show("test_outputs/life_vs_gdp_scatter.html")
+```
+
+The generated page includes dropdowns for X/Y axis datasets, optional size or colour series (with “Auto” preserving defaults), logarithmic toggles for each scale, and a “Trace out point paths” option that connects each region’s historical position across years.
+
 ## dataframes
 
 The dataframe format supported is a pandas dataframe with columns: `Region, (year number), (year number), ...`. There are built-in data loaders `load_owid_charts()` (for OurWorldInData data) and `load_imf_charts()` (for IMF World Economic Outlook data).
