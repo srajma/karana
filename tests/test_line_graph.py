@@ -33,6 +33,7 @@ def test_line_graph_generates_html():
         series("India") / series("World"),
         series("China") / series("World"),
     )
+    chart.default_scale("log")
     chart.administrations(
         [
             {
@@ -59,6 +60,8 @@ def test_line_graph_generates_html():
     assert "Administrations" in content
     assert "admin-legend-item" in content
     assert "xAxisConfig.range = [xRangeMin, xRangeMax];" in content
+    assert 'id="log-scale-toggle"' in content
+    assert '"scale": "log"' in content
 
 
 def test_default_df_accepts_slug_prefix():
@@ -148,3 +151,24 @@ def test_default_df_prefix_matching():
     assert key == "gdp-per-capita-worldbank-constant-usd"
     assert series_names == ["Alpha"]
     assert expressions == ["1"]
+
+
+def test_default_scale_validation():
+    df = pd.DataFrame(
+        {
+            "Region": ["Alpha"],
+            "2000": [10],
+        }
+    )
+    chart = LineGraph({"dataset": df})
+    chart.default_df("dataset")
+    chart.default_exp(series("Alpha"))
+
+    chart.default_scale("linear")
+    chart.default_scale("log")
+
+    try:
+        chart.default_scale("invalid")
+        assert False, "Expected ValueError for invalid scale"
+    except ValueError:
+        pass

@@ -56,6 +56,7 @@ class LineGraph:
 
         self._default_df: Optional[str] = None
         self._default_exprs: Optional[List[Expression]] = None
+        self._default_scale: str = "linear"
         self._administrations: Dict[str, List[dict[str, Any]]] = {}
         self._dataset_titles: Dict[str, str] = {}
 
@@ -99,6 +100,15 @@ class LineGraph:
                 )
 
         self._default_exprs = list(expr_list)
+        return self
+
+    def default_scale(self, scale: str) -> "LineGraph":
+        if not isinstance(scale, str):
+            raise TypeError("default_scale expects a string value.")
+        normalized = scale.strip().lower()
+        if normalized not in {"linear", "log"}:
+            raise ValueError("default_scale accepts only 'linear' or 'log'.")
+        self._default_scale = normalized
         return self
 
     def administrations(
@@ -199,6 +209,7 @@ class LineGraph:
                 "dataset": default_key,
                 "seriesNames": default_series_names,
                 "expressions": default_expressions,
+                "scale": self._default_scale,
             },
             "administrations": {
                 key: self._administrations.get(key, [])
@@ -293,6 +304,16 @@ class LineGraph:
     button:hover {{
       background: #1d4ed8;
       box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    }}
+    .toggle-row {{
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }}
+    .toggle-row input[type="checkbox"] {{
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: #2563eb;
     }}
     .region-slot {{
       display: flex;
@@ -408,6 +429,13 @@ class LineGraph:
         <select id="dataset-select"></select>
       </div>
       <div class="control-group">
+        <label for="log-scale-toggle">Scale</label>
+        <div class="toggle-row">
+          <input id="log-scale-toggle" type="checkbox" />
+          <span>Logarithmic</span>
+        </div>
+      </div>
+      <div class="control-group">
         <label>Series</label>
         <div id="region-selects" class="region-list"></div>
         <button id="add-region" type="button">+ Add Series</button>
@@ -433,9 +461,11 @@ class LineGraph:
       datasetKey: payload.defaults.dataset,
       regionNames: [...payload.defaults.seriesNames],
       expressions: [...payload.defaults.expressions],
+      scale: payload.defaults.scale === "log" ? "log" : "linear",
     }};
 
     const datasetSelect = document.getElementById("dataset-select");
+    const logScaleToggle = document.getElementById("log-scale-toggle");
     const regionContainer = document.getElementById("region-selects");
     const addRegionButton = document.getElementById("add-region");
     const expressionContainer = document.getElementById("expression-list");
@@ -929,6 +959,7 @@ class LineGraph:
         const administrations = (payload.administrations && payload.administrations[state.datasetKey]) || [];
 
         const trimmedExpressions = state.expressions.map((expr) => expr.trim());
+        const isLogScale = state.scale === "log";
         if (trimmedExpressions.some((expr) => expr.length === 0)) {{
           throw new Error("Expressions cannot be empty.");
         }}
@@ -936,9 +967,18 @@ class LineGraph:
         const traces = trimmedExpressions.map((exprText, idx) => {{
           const values = evaluateExpression(exprText, regionSeries, years.length);
           const label = expressionDisplayLabel(exprText, regionSeries) || `Expression ${{idx + 1}}`;
+          const sanitizedValues = values.map((value) => {{
+            if (value == null || !Number.isFinite(value)) {{
+              return null;
+            }}
+            if (isLogScale && value <= 0) {{
+              return null;
+            }}
+            return value;
+          }});
           return {{
             x: baseXValues,
-            y: values,
+            y: sanitizedValues,
             mode: "lines+markers",
             name: label,
             line: {{
@@ -1108,9 +1148,20 @@ class LineGraph:
           }});
         }});
 
-        let yAxisConfig;
-        if (yValues.length === 0) {{
-          yAxisConfig = {{ title: "Value", autorange: true }};
+        const yAxisConfig = {{
+          title: isLogScale ? "Value (log)" : "Value",
+          showgrid: true,
+          gridcolor: "#e2e8f0",
+          gridwidth: 1,
+        }};
+        if (isLogScale) {{
+          yAxisConfig.type = "log";
+          yAxisConfig.autorange = true;
+          if (yValues.length === 0) {{
+            statusMessage.textContent = "No positive values available for logarithmic scale.";
+          }}
+        }} else if (yValues.length === 0) {{
+          yAxisConfig.autorange = true;
         }} else {{
           const minValue = Math.min(...yValues);
           const maxValue = Math.max(...yValues);
@@ -1126,15 +1177,13 @@ class LineGraph:
             lower -= padding;
             upper += padding;
           }}
-          yAxisConfig = {{ title: "Value", range: [lower, upper], autorange: false }};
+          yAxisConfig.range = [lower, upper];
+          yAxisConfig.autorange = false;
           const tickInterval = computeTickInterval(lower, upper);
           if (tickInterval) {{
             yAxisConfig.dtick = tickInterval;
           }}
         }}
-        yAxisConfig.showgrid = true;
-        yAxisConfig.gridcolor = "#e2e8f0";
-        yAxisConfig.gridwidth = 1;
 
         buildAdministrationLegend(administrations);
 
@@ -1163,6 +1212,14 @@ class LineGraph:
       updateChartTitle();
       updateChart();
     }});
+
+    if (logScaleToggle) {{
+      logScaleToggle.checked = state.scale === "log";
+      logScaleToggle.addEventListener("change", () => {{
+        state.scale = logScaleToggle.checked ? "log" : "linear";
+        updateChart();
+      }});
+    }}
 
     addRegionButton.addEventListener("click", () => {{
       addRegionSlot();

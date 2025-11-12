@@ -80,6 +80,16 @@
       background: #1d4ed8;
       box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
     }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: #2563eb;
+    }
     .region-slot {
       display: flex;
       align-items: center;
@@ -134,9 +144,11 @@
     }
     .admin-legend {
       width: 220px;
-      background: #f8fafc;
+      /*background: #f8fafc;*/
+      background: none;
       border-radius: 12px;
-      border: 1px solid #e2e8f0;
+      /*border: 1px solid #e2e8f0;*/
+      border: none;
       padding: 0.75rem;
       display: none;
     }
@@ -149,6 +161,7 @@
       font-size: 1rem;
       margin: 0 0 0.35rem;
       color: #1f2937;
+      display: none;
     }
     .admin-legend-item {
       display: flex;
@@ -175,8 +188,11 @@
       opacity: 0.85;
     }
     .admin-legend-text {
-      font-weight: 450;
+      font-weight: 350;
       color: #111827;
+    }
+    #chart-title {
+      font-weight: 300;
     }
   </style>
 </head>
@@ -186,6 +202,13 @@
       <div class="control-group">
         <label for="dataset-select">Dataset</label>
         <select id="dataset-select"></select>
+      </div>
+      <div class="control-group">
+        <label for="log-scale-toggle">Scale</label>
+        <div class="toggle-row">
+          <input id="log-scale-toggle" type="checkbox" />
+          <span>Logarithmic</span>
+        </div>
       </div>
       <div class="control-group">
         <label>Series</label>
@@ -207,15 +230,17 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"]}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"], "scale": "log"}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
       regionNames: [...payload.defaults.seriesNames],
       expressions: [...payload.defaults.expressions],
+      scale: payload.defaults.scale === "log" ? "log" : "linear",
     };
 
     const datasetSelect = document.getElementById("dataset-select");
+    const logScaleToggle = document.getElementById("log-scale-toggle");
     const regionContainer = document.getElementById("region-selects");
     const addRegionButton = document.getElementById("add-region");
     const expressionContainer = document.getElementById("expression-list");
@@ -709,6 +734,7 @@
         const administrations = (payload.administrations && payload.administrations[state.datasetKey]) || [];
 
         const trimmedExpressions = state.expressions.map((expr) => expr.trim());
+        const isLogScale = state.scale === "log";
         if (trimmedExpressions.some((expr) => expr.length === 0)) {
           throw new Error("Expressions cannot be empty.");
         }
@@ -716,9 +742,18 @@
         const traces = trimmedExpressions.map((exprText, idx) => {
           const values = evaluateExpression(exprText, regionSeries, years.length);
           const label = expressionDisplayLabel(exprText, regionSeries) || `Expression ${idx + 1}`;
+          const sanitizedValues = values.map((value) => {
+            if (value == null || !Number.isFinite(value)) {
+              return null;
+            }
+            if (isLogScale && value <= 0) {
+              return null;
+            }
+            return value;
+          });
           return {
             x: baseXValues,
-            y: values,
+            y: sanitizedValues,
             mode: "lines+markers",
             name: label,
             line: {
@@ -888,9 +923,20 @@
           });
         });
 
-        let yAxisConfig;
-        if (yValues.length === 0) {
-          yAxisConfig = { title: "Value", autorange: true };
+        const yAxisConfig = {
+          title: isLogScale ? "Value (log)" : "Value",
+          showgrid: true,
+          gridcolor: "#e2e8f0",
+          gridwidth: 1,
+        };
+        if (isLogScale) {
+          yAxisConfig.type = "log";
+          yAxisConfig.autorange = true;
+          if (yValues.length === 0) {
+            statusMessage.textContent = "No positive values available for logarithmic scale.";
+          }
+        } else if (yValues.length === 0) {
+          yAxisConfig.autorange = true;
         } else {
           const minValue = Math.min(...yValues);
           const maxValue = Math.max(...yValues);
@@ -906,15 +952,13 @@
             lower -= padding;
             upper += padding;
           }
-          yAxisConfig = { title: "Value", range: [lower, upper], autorange: false };
+          yAxisConfig.range = [lower, upper];
+          yAxisConfig.autorange = false;
           const tickInterval = computeTickInterval(lower, upper);
           if (tickInterval) {
             yAxisConfig.dtick = tickInterval;
           }
         }
-        yAxisConfig.showgrid = true;
-        yAxisConfig.gridcolor = "#e2e8f0";
-        yAxisConfig.gridwidth = 1;
 
         buildAdministrationLegend(administrations);
 
@@ -943,6 +987,14 @@
       updateChartTitle();
       updateChart();
     });
+
+    if (logScaleToggle) {
+      logScaleToggle.checked = state.scale === "log";
+      logScaleToggle.addEventListener("change", () => {
+        state.scale = logScaleToggle.checked ? "log" : "linear";
+        updateChart();
+      });
+    }
 
     addRegionButton.addEventListener("click", () => {
       addRegionSlot();

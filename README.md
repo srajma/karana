@@ -38,6 +38,7 @@ page = karana.Plot("Terrorism trends")
 graph = karana.LineGraph(dfs)
 graph.default_df("terrorism-deaths") # default dataset from dropdown to show
 graph.default_exp(series("India") / series("World")) # some arithmetical expression of series
+graph.default_scale("log") # optional: start charts in logarithmic mode
 graph.administrations(INDIA_ADMINISTRATIONS) # add administrations
 
 # optional: titles to give for each displayed chart

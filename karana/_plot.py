@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ._line_graph import LineGraph
+from ._scatter_plot import ScatterPlot
 
 
 class Plot:
@@ -16,9 +17,9 @@ class Plot:
         self._title = title or "karana Plot"
         self._entries: List[tuple[str, object]] = []
 
-    def add(self, graph: LineGraph, *, title: Optional[str] = None) -> "Plot":
-        if not isinstance(graph, LineGraph):
-            raise TypeError("Plot.add expects a LineGraph instance.")
+    def add(self, graph: Union[LineGraph, ScatterPlot], *, title: Optional[str] = None) -> "Plot":
+        if not isinstance(graph, (LineGraph, ScatterPlot)):
+            raise TypeError("Plot.add expects a LineGraph or ScatterPlot instance.")
         # title parameter remains for backward compatibility but is ignored.
         self._entries.append(("graph", graph))
         return self
@@ -119,7 +120,7 @@ def show(item, *, file_path: str, type: str = "html") -> Path:
     if type.lower() != "html":
         raise ValueError("Only HTML rendering is currently supported.")
 
-    if isinstance(item, LineGraph):
+    if isinstance(item, (LineGraph, ScatterPlot)):
         html_output = item._render_html()
     elif isinstance(item, Plot):
         html_output = item._render_html()
