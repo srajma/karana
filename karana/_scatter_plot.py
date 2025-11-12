@@ -22,9 +22,10 @@ class ScatterPlot:
     Construct interactive HTML-based scatter plots from pandas dataframes.
 
     Each dataframe is expected to include a `Region` column followed by one column per year.
-    Users select which dataset populates the X axis and which populates the Y axis, then
-    choose a year to plot. Every region shared between the datasets is rendered as a single
-    point in the scatter chart for the selected year.
+    Users select datasets for the X and Y axes and a year to plot. Every region shared between
+    the axes is rendered as a single point. Optional dropdowns allow point sizes and colours
+    to depend on additional datasets, logarithmic scaling can be toggled, and point paths can
+    be traced across time.
     """
 
     def __init__(self, dfs: Mapping[str, pd.DataFrame]) -> None:
@@ -41,6 +42,13 @@ class ScatterPlot:
         self._default_y: Optional[str] = None
         self._default_year: Optional[str] = None
         self._dataset_titles: Dict[str, str] = {}
+        self._default_size: Optional[str] = None
+        self._default_color: Optional[str] = None
+        self._default_log_x: bool = False
+        self._default_log_y: bool = False
+        self._default_size_log: bool = True
+        self._default_color_log: bool = True
+        self._default_trace_paths: bool = False
 
     # --------------------------------------------------------------------- configuration
 
@@ -59,6 +67,39 @@ class ScatterPlot:
         self._dataset_titles = {str(k): str(v) for k, v in mapping.items()}
         return self
 
+    def default_size(self, key: Optional[str]) -> "ScatterPlot":
+        if key is None:
+            self._default_size = None
+        else:
+            self._default_size = self._resolve_dataset_key(str(key))
+        return self
+
+    def default_color(self, key: Optional[str]) -> "ScatterPlot":
+        if key is None:
+            self._default_color = None
+        else:
+            self._default_color = self._resolve_dataset_key(str(key))
+        return self
+
+    def default_axes_log(self, *, x: Optional[bool] = None, y: Optional[bool] = None) -> "ScatterPlot":
+        if x is not None:
+            self._default_log_x = bool(x)
+        if y is not None:
+            self._default_log_y = bool(y)
+        return self
+
+    def default_size_log(self, value: bool) -> "ScatterPlot":
+        self._default_size_log = bool(value)
+        return self
+
+    def default_color_log(self, value: bool) -> "ScatterPlot":
+        self._default_color_log = bool(value)
+        return self
+
+    def default_trace_paths(self, enabled: bool) -> "ScatterPlot":
+        self._default_trace_paths = bool(enabled)
+        return self
+
     # ------------------------------------------------------------------------------------
 
     def show(self, file_path: str, type: str = "html") -> Path:
@@ -75,7 +116,13 @@ class ScatterPlot:
     # ------------------------------------------------------------------------------------
 
     def _render_html(self) -> str:
-        x_key, y_key, default_year = self._determine_defaults()
+        defaults = self._determine_defaults()
+        x_key = defaults["x_key"]
+        y_key = defaults["y_key"]
+        default_year = defaults["year"]
+        size_key = defaults["size_key"]
+        color_key = defaults["color_key"]
+
         title_text = html_utils.escape(
             f"{self._resolve_dataset_title(y_key)} vs {self._resolve_dataset_title(x_key)}"
         )
@@ -91,10 +138,20 @@ class ScatterPlot:
             "defaults": {
                 "axes": {"x": x_key, "y": y_key},
                 "year": default_year,
+                "size": size_key or "auto",
+                "color": color_key or "auto",
+                "log": {
+                    "x": self._default_log_x,
+                    "y": self._default_log_y,
+                    "size": self._default_size_log,
+                    "color": self._default_color_log,
+                },
+                "tracePaths": self._default_trace_paths,
             },
             "titles": {
                 "mapping": self._dataset_titles,
             },
+            "seriesOrder": list(self._datasets.keys()),
         }
 
         payload_json = json.dumps(payload, ensure_ascii=False)
@@ -142,14 +199,38 @@ class ScatterPlot:
     label {{
       font-weight: 500;
       font-size: 0.95rem;
-      min-width: 120px;
+      min-width: 140px;
+    }}
+    .control-inline {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 260px;
+    }}
+    .control-inline select {{
+      flex: 1 1 220px;
+    }}
+    .checkbox {{
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: #475569;
+      user-select: none;
+    }}
+    .checkbox input[type="checkbox"] {{
+      width: 16px;
+      height: 16px;
+    }}
+    .checkbox.is-disabled {{
+      opacity: 0.55;
     }}
     select {{
       padding: 0.5rem 0.75rem;
       border-radius: 8px;
       border: 1px solid #cbd5e1;
       font-size: 0.95rem;
-      min-width: 220px;
       background: #f8fafc;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }}
@@ -171,6 +252,26 @@ class ScatterPlot:
       text-align: center;
       color: #1f2937;
     }}
+    button {{
+      border: none;
+      background: #2563eb;
+      color: white;
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }}
+    button:hover {{
+      background: #1d4ed8;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    }}
+    button:disabled {{
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }}
     .status-message {{
       min-height: 1.25rem;
       font-size: 0.9rem;
@@ -186,16 +287,58 @@ class ScatterPlot:
     <div class="controls">
       <div class="control-group">
         <label for="x-axis-select">X Axis</label>
-        <select id="x-axis-select"></select>
+        <div class="control-inline">
+          <select id="x-axis-select"></select>
+          <label class="checkbox" id="x-axis-log-label">
+            <input type="checkbox" id="x-axis-log-toggle" />
+            <span>Logarithmic</span>
+          </label>
+        </div>
       </div>
       <div class="control-group">
         <label for="y-axis-select">Y Axis</label>
-        <select id="y-axis-select"></select>
+        <div class="control-inline">
+          <select id="y-axis-select"></select>
+          <label class="checkbox" id="y-axis-log-label">
+            <input type="checkbox" id="y-axis-log-toggle" />
+            <span>Logarithmic</span>
+          </label>
+        </div>
       </div>
       <div class="control-group">
         <label for="year-slider">Year</label>
         <input id="year-slider" type="range" min="0" max="0" step="1" value="0" />
         <span id="year-value" class="year-value"></span>
+      </div>
+      <div class="control-group">
+        <label for="point-size-select">Point Sizes</label>
+        <div class="control-inline">
+          <select id="point-size-select"></select>
+          <label class="checkbox" id="size-log-label">
+            <input type="checkbox" id="size-log-toggle" />
+            <span>Logarithmic</span>
+          </label>
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="point-color-select">Point Colours</label>
+        <div class="control-inline">
+          <select id="point-color-select"></select>
+          <label class="checkbox" id="color-log-label">
+            <input type="checkbox" id="color-log-toggle" />
+            <span>Logarithmic</span>
+          </label>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Point Paths</label>
+        <div class="control-inline">
+          <label class="checkbox">
+            <input type="checkbox" id="trace-paths-toggle" />
+            <span>Trace out point paths</span>
+          </label>
+          <button id="clear-paths" type="button">Clear Point Paths</button>
+        </div>
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
@@ -205,6 +348,7 @@ class ScatterPlot:
 
   <script>
     const payload = {payload_json};
+    const AUTO_VALUE = "auto";
 
     const state = {{
       xKey: payload.defaults.axes.x,
@@ -212,12 +356,32 @@ class ScatterPlot:
       year: payload.defaults.year,
       yearIndex: null,
       yearOptions: [],
+      sizeKey: payload.defaults.size,
+      colorKey: payload.defaults.color,
+      logX: Boolean(payload.defaults.log && payload.defaults.log.x),
+      logY: Boolean(payload.defaults.log && payload.defaults.log.y),
+      sizeLog: payload.defaults.log && payload.defaults.log.size !== undefined ? Boolean(payload.defaults.log.size) : true,
+      colorLog: payload.defaults.log && payload.defaults.log.color !== undefined ? Boolean(payload.defaults.log.color) : true,
+      tracePaths: Boolean(payload.defaults.tracePaths),
+      pathData: {{}},
     }};
 
     const xAxisSelect = document.getElementById("x-axis-select");
     const yAxisSelect = document.getElementById("y-axis-select");
     const yearSlider = document.getElementById("year-slider");
     const yearValue = document.getElementById("year-value");
+    const sizeSelect = document.getElementById("point-size-select");
+    const colorSelect = document.getElementById("point-color-select");
+    const xAxisLogToggle = document.getElementById("x-axis-log-toggle");
+    const yAxisLogToggle = document.getElementById("y-axis-log-toggle");
+    const sizeLogToggle = document.getElementById("size-log-toggle");
+    const colorLogToggle = document.getElementById("color-log-toggle");
+    const xAxisLogLabel = document.getElementById("x-axis-log-label");
+    const yAxisLogLabel = document.getElementById("y-axis-log-label");
+    const sizeLogLabel = document.getElementById("size-log-label");
+    const colorLogLabel = document.getElementById("color-log-label");
+    const tracePathsToggle = document.getElementById("trace-paths-toggle");
+    const clearPathsButton = document.getElementById("clear-paths");
     const statusMessage = document.getElementById("status-message");
     const chartTitle = document.getElementById("chart-title");
 
@@ -246,6 +410,10 @@ class ScatterPlot:
       return key;
     }}
 
+    function updateChartTitle() {{
+      chartTitle.textContent = resolveDatasetTitle(state.yKey) + " vs " + resolveDatasetTitle(state.xKey);
+    }}
+
     function computeCommonYears(xKey, yKey) {{
       const xYears = getDataset(xKey).years;
       const yYears = getDataset(yKey).years;
@@ -256,21 +424,32 @@ class ScatterPlot:
     function computeCommonRegions(xKey, yKey) {{
       const xRegions = Object.keys(getDataset(xKey).regions);
       const yRegions = new Set(Object.keys(getDataset(yKey).regions));
-      return xRegions.filter((region) => yRegions.has(region));
-    }}
-
-    function updateChartTitle() {{
-      chartTitle.textContent = resolveDatasetTitle(state.yKey) + " vs " + resolveDatasetTitle(state.xKey);
+      return xRegions.filter((region) => yRegions.has(region)).sort();
     }}
 
     function buildAxisSelect(select, selectedKey) {{
       const options = Object.keys(payload.datasets)
         .map((key) => {{
           const selected = key === selectedKey ? "selected" : "";
-          return `<option value="${{key}}" ${{selected}}>${{key}}</option>`;
+          return `<option value="${{key}}" ${{selected}}>${{resolveDatasetTitle(key)}}</option>`;
         }})
         .join("");
       select.innerHTML = options;
+      select.value = selectedKey;
+    }}
+
+    function buildSeriesSelect(select, selectedKey, {{ includeAuto }}) {{
+      const entries = [];
+      if (includeAuto) {{
+        const selected = selectedKey === AUTO_VALUE ? "selected" : "";
+        entries.push(`<option value="${{AUTO_VALUE}}" ${{selected}}>Auto</option>`);
+      }}
+      payload.seriesOrder.forEach((key) => {{
+        const selected = key === selectedKey ? "selected" : "";
+        const label = resolveDatasetTitle(key);
+        entries.push(`<option value="${{key}}" ${{selected}}>${{label}}</option>`);
+      }});
+      select.innerHTML = entries.join("");
       select.value = selectedKey;
     }}
 
@@ -300,100 +479,317 @@ class ScatterPlot:
       yearValue.textContent = state.year;
     }}
 
+    function ensureDatasetHasYear(datasetKey, yearLabel) {{
+      const dataset = getDataset(datasetKey);
+      const index = dataset.years.indexOf(yearLabel);
+      if (index === -1) {{
+        throw new Error("Dataset '" + datasetKey + "' does not contain year " + yearLabel + ".");
+      }}
+      return index;
+    }}
+
+    function updateLogToggleStates() {{
+      xAxisLogToggle.checked = state.logX;
+      yAxisLogToggle.checked = state.logY;
+      sizeLogToggle.checked = state.sizeLog;
+      colorLogToggle.checked = state.colorLog;
+
+      const sizeDisabled = state.sizeKey === AUTO_VALUE;
+      const colorDisabled = state.colorKey === AUTO_VALUE;
+      sizeLogToggle.disabled = sizeDisabled;
+      colorLogToggle.disabled = colorDisabled;
+      sizeLogLabel.classList.toggle("is-disabled", sizeDisabled);
+      colorLogLabel.classList.toggle("is-disabled", colorDisabled);
+    }}
+
+    function resetPathData() {{
+      state.pathData = {{}};
+    }}
+
+    function toNumber(value) {{
+      if (value == null) {{
+        return null;
+      }}
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    }}
+
     function updateChart() {{
       try {{
         statusMessage.textContent = "";
         ensureYearStateAvailable();
 
-        const datasetX = getDataset(state.xKey);
-        const datasetY = getDataset(state.yKey);
         const yearLabel = state.year;
-        if (!yearLabel) {{
-          throw new Error("No year is selected.");
-        }}
-
         const availableRegions = computeCommonRegions(state.xKey, state.yKey);
         if (!availableRegions || availableRegions.length === 0) {{
           throw new Error("Selected axes do not share any regions.");
         }}
 
-        const xYearIndex = datasetX.years.indexOf(yearLabel);
-        const yYearIndex = datasetY.years.indexOf(yearLabel);
-        if (xYearIndex === -1 || yYearIndex === -1) {{
-          throw new Error("Selected year not present in one of the datasets.");
+        const xYearIndex = ensureDatasetHasYear(state.xKey, yearLabel);
+        const yYearIndex = ensureDatasetHasYear(state.yKey, yearLabel);
+        const datasetX = getDataset(state.xKey);
+        const datasetY = getDataset(state.yKey);
+
+        let sizeDataset = null;
+        let sizeYearIndex = null;
+        if (state.sizeKey !== AUTO_VALUE) {{
+          sizeDataset = getDataset(state.sizeKey);
+          sizeYearIndex = ensureDatasetHasYear(state.sizeKey, yearLabel);
         }}
 
-        const traceX = [];
-        const traceY = [];
-        const traceRegions = [];
+        let colorDataset = null;
+        let colorYearIndex = null;
+        if (state.colorKey !== AUTO_VALUE) {{
+          colorDataset = getDataset(state.colorKey);
+          colorYearIndex = ensureDatasetHasYear(state.colorKey, yearLabel);
+        }}
 
+        const points = [];
         availableRegions.forEach((regionName) => {{
-          const seriesX = datasetX.regions[regionName];
-          const seriesY = datasetY.regions[regionName];
-          if (!seriesX || !seriesY) {{
+          const xSeries = datasetX.regions[regionName];
+          const ySeries = datasetY.regions[regionName];
+          if (!xSeries || !ySeries) {{
             return;
           }}
-          const xValue = seriesX[xYearIndex];
-          const yValue = seriesY[yYearIndex];
-          if (xValue == null || yValue == null || !Number.isFinite(xValue) || !Number.isFinite(yValue)) {{
+          const xValue = toNumber(xSeries[xYearIndex]);
+          const yValue = toNumber(ySeries[yYearIndex]);
+          if (xValue == null || yValue == null) {{
             return;
           }}
-          traceX.push(xValue);
-          traceY.push(yValue);
-          traceRegions.push(regionName);
+          if (state.logX && xValue <= 0) {{
+            return;
+          }}
+          if (state.logY && yValue <= 0) {{
+            return;
+          }}
+
+          let sizeValue = null;
+          if (sizeDataset) {{
+            const sizeSeries = sizeDataset.regions[regionName];
+            if (sizeSeries) {{
+              sizeValue = toNumber(sizeSeries[sizeYearIndex]);
+            }}
+          }}
+
+          let colorValue = null;
+          if (colorDataset) {{
+            const colorSeries = colorDataset.regions[regionName];
+            if (colorSeries) {{
+              colorValue = toNumber(colorSeries[colorYearIndex]);
+            }}
+          }}
+
+          points.push({{
+            region: regionName,
+            x: xValue,
+            y: yValue,
+            sizeValue,
+            colorValue,
+          }});
         }});
 
-        if (traceX.length === 0) {{
+        if (points.length === 0) {{
           Plotly.purge("chart");
           statusMessage.textContent = "No numeric values available for the selected year.";
           return;
         }}
 
-        const xMin = Math.min(...traceX);
-        const xMax = Math.max(...traceX);
-        const yMin = Math.min(...traceY);
-        const yMax = Math.max(...traceY);
-
-        function expandRange(minValue, maxValue) {{
-          let lower = minValue;
-          let upper = maxValue;
-          if (lower === upper) {{
-            const padding = Math.max(1, Math.abs(lower) * 0.1);
-            lower -= padding;
-            upper += padding;
-          }} else {{
-            const span = upper - lower;
-            const padding = span * 0.08;
-            lower -= padding;
-            upper += padding;
+        function expandRange(values) {{
+          const min = Math.min(...values);
+          const max = Math.max(...values);
+          if (min === max) {{
+            const padding = Math.max(1, Math.abs(min) * 0.1);
+            return [min - padding, max + padding];
           }}
-          return [lower, upper];
+          const span = max - min;
+          const padding = span * 0.08;
+          return [min - padding, max + padding];
         }}
 
-        const [xLower, xUpper] = expandRange(xMin, xMax);
-        const [yLower, yUpper] = expandRange(yMin, yMax);
+        function computeSizes(values, useLog) {{
+          const baseSize = 10;
+          const minSize = 6;
+          const maxSize = 28;
+          const filtered = values.filter((value) => {{
+            if (value == null) {{
+              return false;
+            }}
+            if (useLog) {{
+              return value > 0;
+            }}
+            return true;
+          }});
+          if (filtered.length === 0) {{
+            return values.map(() => baseSize);
+          }}
+          const transformed = filtered.map((value) => (useLog ? Math.log10(value) : value));
+          const min = Math.min(...transformed);
+          const max = Math.max(...transformed);
+          if (min === max) {{
+            const constant = (minSize + maxSize) / 2;
+            return values.map((value) => (value == null ? baseSize : constant));
+          }}
+          return values.map((value) => {{
+            if (value == null) {{
+              return baseSize;
+            }}
+            if (useLog && value <= 0) {{
+              return baseSize;
+            }}
+            const transformedValue = useLog ? Math.log10(value) : value;
+            const ratio = (transformedValue - min) / (max - min);
+            return minSize + ratio * (maxSize - minSize);
+          }});
+        }}
 
-        Plotly.react("chart", [
-          {{
-            type: "scatter",
-            mode: "markers",
-            x: traceX,
-            y: traceY,
-            customdata: traceRegions,
-            hovertemplate: "Region: %{{customdata}}<br>X: %{{x}}<br>Y: %{{y}}<extra></extra>",
-            marker: {{
-              size: 10,
-              opacity: 0.85,
-              line: {{ width: 0 }},
-              color: "#2563eb",
-            }},
-            showlegend: false,
+        function ratioToColor(ratio) {{
+          const clamped = Math.max(0, Math.min(1, ratio));
+          const hue = 210 - clamped * 200;
+          const lightness = 45 + clamped * 15;
+          return `hsl(${{hue}}, 70%, ${{lightness}}%)`;
+        }}
+
+        function computeColors(values, useLog) {{
+          const filtered = values.filter((value) => {{
+            if (value == null) {{
+              return false;
+            }}
+            if (useLog) {{
+              return value > 0;
+            }}
+            return true;
+          }});
+          if (filtered.length === 0) {{
+            return values.map(() => "#2563eb");
+          }}
+          const transformed = filtered.map((value) => (useLog ? Math.log10(value) : value));
+          const min = Math.min(...transformed);
+          const max = Math.max(...transformed);
+          if (min === max) {{
+            return values.map(() => "#2563eb");
+          }}
+          return values.map((value) => {{
+            if (value == null) {{
+              return "#2563eb";
+            }}
+            if (useLog && value <= 0) {{
+              return "#2563eb";
+            }}
+            const transformedValue = useLog ? Math.log10(value) : value;
+            const ratio = (transformedValue - min) / (max - min);
+            return ratioToColor(ratio);
+          }});
+        }}
+
+        const markerSizes = state.sizeKey === AUTO_VALUE
+          ? new Array(points.length).fill(10)
+          : computeSizes(points.map((point) => point.sizeValue), state.sizeLog);
+
+        const markerColors = state.colorKey === AUTO_VALUE
+          ? new Array(points.length).fill("#2563eb")
+          : computeColors(points.map((point) => point.colorValue), state.colorLog);
+
+        if (state.tracePaths) {{
+          points.forEach((point) => {{
+            if (!state.pathData[point.region]) {{
+              state.pathData[point.region] = {{}};
+            }}
+            state.pathData[point.region][yearLabel] = {{
+              x: point.x,
+              y: point.y,
+            }};
+          }});
+        }}
+
+        const [xLower, xUpper] = expandRange(points.map((point) => point.x));
+        const [yLower, yUpper] = expandRange(points.map((point) => point.y));
+
+        const customdata = points.map((point) => [
+          point.region,
+          point.sizeValue,
+          point.colorValue,
+        ]);
+
+        let hoverTemplate = "Region: %{{customdata[0]}}<br>X: %{{x}}<br>Y: %{{y}}";
+        if (state.sizeKey !== AUTO_VALUE) {{
+          hoverTemplate += "<br>Size: %{{customdata[1]}}";
+        }}
+        if (state.colorKey !== AUTO_VALUE) {{
+          hoverTemplate += "<br>Colour: %{{customdata[2]}}";
+        }}
+        hoverTemplate += "<extra></extra>";
+
+        const mainTrace = {{
+          type: "scatter",
+          mode: "markers",
+          x: points.map((point) => point.x),
+          y: points.map((point) => point.y),
+          customdata,
+          hovertemplate: hoverTemplate,
+          marker: {{
+            size: markerSizes,
+            sizemode: "diameter",
+            sizemin: 4,
+            opacity: 0.9,
+            color: markerColors,
+            line: {{ width: 0.5, color: "#0f172a" }},
           }},
-        ], {{
+          showlegend: false,
+        }};
+
+        const pathTraces = [];
+        if (state.tracePaths) {{
+          Object.keys(state.pathData).forEach((regionName) => {{
+            const entries = Object.entries(state.pathData[regionName]).map(([year, coords]) => ({{
+              year,
+              x: coords.x,
+              y: coords.y,
+            }}));
+            const filteredEntries = entries.filter((entry) => {{
+              if (entry.x == null || entry.y == null) {{
+                return false;
+              }}
+              if (state.logX && entry.x <= 0) {{
+                return false;
+              }}
+              if (state.logY && entry.y <= 0) {{
+                return false;
+              }}
+              return true;
+            }});
+            if (filteredEntries.length < 2) {{
+              return;
+            }}
+            filteredEntries.sort((a, b) => {{
+              const aNumeric = Number(a.year);
+              const bNumeric = Number(b.year);
+              if (Number.isFinite(aNumeric) && Number.isFinite(bNumeric)) {{
+                return aNumeric - bNumeric;
+              }}
+              return String(a.year).localeCompare(String(b.year));
+            }});
+            pathTraces.push({{
+              type: "scatter",
+              mode: "lines",
+              x: filteredEntries.map((entry) => entry.x),
+              y: filteredEntries.map((entry) => entry.y),
+              name: regionName,
+              line: {{
+                width: 1,
+                color: "rgba(148, 163, 184, 0.7)",
+              }},
+              hoverinfo: "skip",
+              showlegend: false,
+            }});
+          }});
+        }}
+
+        Plotly.react("chart", [mainTrace, ...pathTraces], {{
           margin: {{ l: 80, r: 30, t: 20, b: 60 }},
           xaxis: {{
             title: resolveDatasetTitle(state.xKey),
             range: [xLower, xUpper],
+            type: state.logX ? "log" : "linear",
             showgrid: true,
             gridcolor: "#e2e8f0",
             gridwidth: 1,
@@ -402,6 +798,7 @@ class ScatterPlot:
           yaxis: {{
             title: resolveDatasetTitle(state.yKey),
             range: [yLower, yUpper],
+            type: state.logY ? "log" : "linear",
             showgrid: true,
             gridcolor: "#e2e8f0",
             gridwidth: 1,
@@ -420,6 +817,7 @@ class ScatterPlot:
     xAxisSelect.addEventListener("change", () => {{
       state.xKey = xAxisSelect.value;
       ensureYearStateAvailable();
+      resetPathData();
       updateChartTitle();
       updateChart();
     }});
@@ -427,6 +825,7 @@ class ScatterPlot:
     yAxisSelect.addEventListener("change", () => {{
       state.yKey = yAxisSelect.value;
       ensureYearStateAvailable();
+      resetPathData();
       updateChartTitle();
       updateChart();
     }});
@@ -444,9 +843,55 @@ class ScatterPlot:
       }}
     }});
 
+    sizeSelect.addEventListener("change", () => {{
+      state.sizeKey = sizeSelect.value || AUTO_VALUE;
+      updateLogToggleStates();
+      updateChart();
+    }});
+
+    colorSelect.addEventListener("change", () => {{
+      state.colorKey = colorSelect.value || AUTO_VALUE;
+      updateLogToggleStates();
+      updateChart();
+    }});
+
+    xAxisLogToggle.addEventListener("change", () => {{
+      state.logX = xAxisLogToggle.checked;
+      updateChart();
+    }});
+
+    yAxisLogToggle.addEventListener("change", () => {{
+      state.logY = yAxisLogToggle.checked;
+      updateChart();
+    }});
+
+    sizeLogToggle.addEventListener("change", () => {{
+      state.sizeLog = sizeLogToggle.checked;
+      updateChart();
+    }});
+
+    colorLogToggle.addEventListener("change", () => {{
+      state.colorLog = colorLogToggle.checked;
+      updateChart();
+    }});
+
+    tracePathsToggle.addEventListener("change", () => {{
+      state.tracePaths = tracePathsToggle.checked;
+      updateChart();
+    }});
+
+    clearPathsButton.addEventListener("click", () => {{
+      resetPathData();
+      updateChart();
+    }});
+
     function init() {{
       buildAxisSelect(xAxisSelect, state.xKey);
       buildAxisSelect(yAxisSelect, state.yKey);
+      buildSeriesSelect(sizeSelect, state.sizeKey, {{ includeAuto: true }});
+      buildSeriesSelect(colorSelect, state.colorKey, {{ includeAuto: true }});
+      updateLogToggleStates();
+      tracePathsToggle.checked = state.tracePaths;
       ensureYearStateAvailable();
       updateChartTitle();
       updateChart();
@@ -475,15 +920,16 @@ class ScatterPlot:
 """
         return html_output
 
-    def _determine_defaults(self) -> tuple[str, str, str]:
+    def _determine_defaults(self) -> Dict[str, Optional[str]]:
         if not self._datasets:
             raise ValueError("ScatterPlot has no datasets to render.")
 
         x_key = self._resolve_dataset_key(self._default_x or next(iter(self._datasets)))
-        if self._default_y is None:
-            y_key = next((key for key in self._datasets if key != x_key), x_key)
-        else:
-            y_key = self._resolve_dataset_key(self._default_y)
+        y_key = (
+            self._resolve_dataset_key(self._default_y)
+            if self._default_y is not None
+            else next((key for key in self._datasets if key != x_key), x_key)
+        )
 
         dataset_x = self._datasets[x_key]
         dataset_y = self._datasets[y_key]
@@ -505,7 +951,33 @@ class ScatterPlot:
                 f"Datasets '{x_key}' and '{y_key}' do not share any region names."
             )
 
-        return x_key, y_key, selected_year
+        size_key: Optional[str]
+        if self._default_size is None:
+            size_key = None
+        else:
+            size_key = self._resolve_dataset_key(self._default_size)
+            if selected_year not in self._datasets[size_key].years:
+                raise ValueError(
+                    f"Dataset '{size_key}' does not contain year '{selected_year}' required for default size series."
+                )
+
+        color_key: Optional[str]
+        if self._default_color is None:
+            color_key = None
+        else:
+            color_key = self._resolve_dataset_key(self._default_color)
+            if selected_year not in self._datasets[color_key].years:
+                raise ValueError(
+                    f"Dataset '{color_key}' does not contain year '{selected_year}' required for default colour series."
+                )
+
+        return {
+            "x_key": x_key,
+            "y_key": y_key,
+            "year": selected_year,
+            "size_key": size_key,
+            "color_key": color_key,
+        }
 
     def _compute_common_regions(self, dataset_x: _Dataset, dataset_y: _Dataset) -> List[str]:
         y_regions = set(dataset_y.regions.keys())
@@ -572,6 +1044,5 @@ class ScatterPlot:
             raise ValueError(f"Dataframe '{key}' must include at least one region row.")
 
         return _Dataset(years=years, regions=regions)
-
 
 

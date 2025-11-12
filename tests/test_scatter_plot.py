@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Dict
 
 import numpy as np  # noqa: E402
 import pandas as pd  # type: ignore  # noqa: E402
@@ -42,6 +43,10 @@ def test_scatter_plot_renders_html(tmp_path) -> None:
     assert "x-axis-select" in html
     assert "y-axis-select" in html
     assert "year-slider" in html
+    assert "point-size-select" in html
+    assert "point-color-select" in html
+    assert "trace-paths-toggle" in html
+    assert "clear-paths" in html
     assert "+ Add Series" not in html
 
 
@@ -52,6 +57,10 @@ def test_scatter_plot_payload_defaults() -> None:
     assert '"x": "demo"' in html
     assert '"y": "demo"' in html
     assert '"year": "2012"' in html  # last year should be default
+    assert '"size": "auto"' in html
+    assert '"color": "auto"' in html
+    assert '"tracePaths": false' in html
+    assert '"log": {"x": false, "y": false, "size": true, "color": true}' in html
 
 
 def test_scatter_plot_generates_html(tmp_path):
@@ -117,19 +126,33 @@ def test_scatter_plot_with_owid_datasets(tmp_path):
     try:
         life_expectancy = load_chart("life-expectancy")
         gdp_per_capita = load_chart("gdp-per-capita-maddison-project-database")
+        population = load_chart("population")
+        fertility = load_chart("children-born-per-woman")
     except Exception as exc:  # pragma: no cover - network variability
         pytest.skip(f"OWID chart fetch failed: {exc}")
 
+    datasets: Dict[str, pd.DataFrame] = {}
+    datasets.update(life_expectancy)
+    datasets.update(gdp_per_capita)
+    datasets.update(population)
+    datasets.update(fertility)
+
     life_key, life_df = next(iter(life_expectancy.items()))
     gdp_key, gdp_df = next(iter(gdp_per_capita.items()))
+    population_key, _ = next(iter(population.items()))
+    fertility_key, _ = next(iter(fertility.items()))
 
-    scatter = ScatterPlot({life_key: life_df, gdp_key: gdp_df})
+    scatter = ScatterPlot(datasets)
     scatter.default_axes(x=gdp_key, y=life_key)
+    scatter.default_size(population_key)
+    scatter.default_color(fertility_key)
     scatter.default_year(2019)
     scatter.titles(
         {
             "life-expectancy": "Life Expectancy",
             "gdp-per-capita-maddison-project-database": "GDP per Capita (Maddison Project)",
+            "population": "Population",
+            "children-born-per-woman": "Children Born Per Woman",
         }
     )
 
@@ -143,4 +166,8 @@ def test_scatter_plot_with_owid_datasets(tmp_path):
     assert "payload =" in html
     assert gdp_key in html
     assert life_key in html
+    assert population_key in html
+    assert fertility_key in html
+    assert f'"size": "{population_key}"' in html
+    assert f'"color": "{fertility_key}"' in html
     assert "+ Add Series" not in html
