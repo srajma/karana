@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NY.GDP.PCAP.CD[GDP per capita (current US$)]</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: #1f2933;
+      background: #f9fafb;
+    }
+    body {
+      margin: 0;
+      /*padding: 1.5rem;*/
+      background: #ffffff;
+
+    }
+    .karana-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      /*box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);*/
+      padding: 1.5rem 1.75rem 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 1rem;
+    }
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .chart-and-legend {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    label {
+      font-weight: 500;
+      font-size: 0.95rem;
+      min-width: 120px;
+    }
+    select, input[type="text"] {
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.95rem;
+      min-width: 220px;
+      background: #f8fafc;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      background: white;
+    }
+    button {
+      border: none;
+      background: #2563eb;
+      color: white;
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      background: #1d4ed8;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .toggle-row input[type="checkbox"] {
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: #2563eb;
+    }
+    .region-slot {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .region-slot span {
+      font-weight: 500;
+      color: #475569;
+      min-width: 1.5rem;
+      text-align: right;
+    }
+    .expression-list {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 0.5rem;
+    }
+    .expression-slot {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .expression-slot span {
+      font-weight: 500;
+      color: #475569;
+      min-width: 7rem;
+    }
+    .expression-slot input {
+      flex: 1;
+      min-width: 220px;
+    }
+    .remove-expression,
+    .remove-region {
+      background: #e11d48;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    .remove-expression:hover,
+    .remove-region:hover {
+      background: #be123c;
+    }
+    .status-message {
+      min-height: 1.25rem;
+      font-size: 0.9rem;
+      color: #dc2626;
+    }
+    #chart {
+      flex: 1 1 0;
+      min-height: 420px;
+    }
+    .admin-legend {
+      width: 220px;
+      /*background: #f8fafc;*/
+      background: none;
+      border-radius: 12px;
+      /*border: 1px solid #e2e8f0;*/
+      border: none;
+      padding: 0.75rem;
+      display: none;
+    }
+    .admin-legend.is-visible {
+      display: flex;
+      flex-direction: column;
+      /*gap: 0.65rem;*/
+    }
+    .admin-legend h2 {
+      font-size: 1rem;
+      margin: 0 0 0.35rem;
+      color: #1f2937;
+      display: none;
+    }
+    .admin-legend-item {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 0.75rem;
+      line-height: 1rem;
+      color: #334155;
+    }
+    .admin-legend-color {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px dotted rgba(51, 65, 85, 0.4);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .admin-legend-color::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 2px;
+      background: currentColor;
+      opacity: 0.85;
+    }
+    .admin-legend-text {
+      font-weight: 350;
+      color: #111827;
+    }
+    #chart-title {
+      font-weight: 300;
+    }
+  </style>
+</head>
+<body>
+  <div class="karana-container">
+    <div class="controls">
+      <div class="control-group">
+        <label for="dataset-select">Dataset</label>
+        <select id="dataset-select"></select>
+      </div>
+      <div class="control-group">
+        <label for="log-scale-toggle">Scale</label>
+        <div class="toggle-row">
+          <input id="log-scale-toggle" type="checkbox" />
+          <span>Logarithmic</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Series</label>
+        <div id="region-selects" class="region-list"></div>
+        <button id="add-region" type="button">+ Add Series</button>
+      </div>
+      <div class="control-group">
+        <label>Expressions</label>
+        <div id="expression-list" class="expression-list"></div>
+        <button id="add-expression" type="button">+ Add Expression</button>
+      </div>
+      <div class="status-message" id="status-message"></div>
+    </div>
+    <h1 id="chart-title">NY.GDP.PCAP.CD[GDP per capita (current US$)]</h1>
+    <div class="chart-and-legend">
+      <div id="chart"></div>
+      <div id="admin-legend" class="admin-legend"></div>
+    </div>
+  </div>
+
+  <script>
+    const payload = {"datasets": {"NY.GDP.PCAP.CD[GDP per capita (current US$)]": {"years": ["2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024"], "regions": {"China": [8175.33285077393, 8254.86859320357, 8979.67652709856, 10085.6638148819, 10342.9009524335, 10627.4637989619, 12887.4357242941, 12970.6056414327, 12951.1782397043, 13303.1481543868], "India": [1583.99815907985, 1707.50892912243, 1950.10468280866, 1966.25455171679, 2041.42863698585, 1907.04251637669, 2239.61384367482, 2347.44829434623, 2530.12031278204, 2696.66389984463], "United States": [56849.4697923159, 57976.628204291, 60047.7190728307, 62875.6661382728, 65227.9565911038, 64401.5074354212, 71307.4017277218, 77860.9112908848, 82304.6204272866, 85809.9003846356]}}}, "defaults": {"dataset": "NY.GDP.PCAP.CD[GDP per capita (current US$)]", "seriesNames": ["China"], "expressions": ["1"], "scale": "linear", "customTitle": null}, "administrations": {"NY.GDP.PCAP.CD[GDP per capita (current US$)]": []}, "titles": {"mapping": {}}};
+
+    const state = {
+      datasetKey: payload.defaults.dataset,
+      regionNames: [...payload.defaults.seriesNames],
+      expressions: [...payload.defaults.expressions],
+      scale: payload.defaults.scale === "log" ? "log" : "linear",
+      customTitle: payload.defaults.customTitle || null,
+    };
+
+    const datasetSelect = document.getElementById("dataset-select");
+    const logScaleToggle = document.getElementById("log-scale-toggle");
+    const regionContainer = document.getElementById("region-selects");
+    const addRegionButton = document.getElementById("add-region");
+    const expressionContainer = document.getElementById("expression-list");
+    const addExpressionButton = document.getElementById("add-expression");
+    const statusMessage = document.getElementById("status-message");
+    const adminLegend = document.getElementById("admin-legend");
+    const chartTitle = document.getElementById("chart-title");
+
+    function getDataset(key) {
+      return payload.datasets[key];
+    }
+
+    function resolveDatasetTitle(key) {
+      const mapping = (payload.titles && payload.titles.mapping) || null;
+      if (mapping) {
+        if (Object.prototype.hasOwnProperty.call(mapping, key)) {
+          return mapping[key];
+        }
+        let bestPrefix = null;
+        let bestLength = -1;
+        Object.keys(mapping).forEach((prefix) => {
+          if (key.startsWith(prefix) && prefix.length > bestLength) {
+            bestPrefix = prefix;
+            bestLength = prefix.length;
+          }
+        });
+        if (bestPrefix !== null) {
+          return mapping[bestPrefix];
+        }
+      }
+      return key;
+    }
+
+    function updateChartTitle() {
+      if (!chartTitle) {
+        return;
+      }
+      if (state.customTitle) {
+        chartTitle.textContent = state.customTitle;
+        document.title = state.customTitle;
+        return;
+      }
+      const resolved = resolveDatasetTitle(state.datasetKey);
+      chartTitle.textContent = resolved;
+      document.title = resolved;
+    }
+
+    function ensureRegionSelectionsAvailable(dataset) {
+      const available = Object.keys(dataset.regions);
+      if (available.length === 0) {
+        throw new Error("Dataset '" + state.datasetKey + "' has no region data.");
+      }
+      state.regionNames = state.regionNames.map((name, index) => {
+        if (available.includes(name)) {
+          return name;
+        }
+        return available[Math.min(index, available.length - 1)];
+      });
+      if (state.regionNames.length === 0) {
+        state.regionNames = [available[0]];
+      }
+    }
+
+    function buildDatasetSelect() {
+      const options = Object.keys(payload.datasets)
+        .map((key) => {
+          const selected = key === state.datasetKey ? "selected" : "";
+          return `<option value="${key}" ${selected}>${key}</option>`;
+        })
+        .join("");
+      datasetSelect.innerHTML = options;
+      datasetSelect.value = state.datasetKey;
+    }
+
+    function buildRegionControls() {
+      regionContainer.innerHTML = "";
+      const dataset = getDataset(state.datasetKey);
+      const available = Object.keys(dataset.regions);
+
+      state.regionNames.forEach((regionName, idx) => {
+        const slot = document.createElement("div");
+        slot.className = "region-slot";
+
+        const label = document.createElement("span");
+        label.textContent = idx + 1;
+        slot.appendChild(label);
+
+        const select = document.createElement("select");
+        available.forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          if (name === regionName) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        });
+
+        select.addEventListener("change", () => {
+          state.regionNames[idx] = select.value;
+          updateChart();
+        });
+
+        slot.appendChild(select);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-region";
+        remove.textContent = "Remove";
+        remove.title = "Remove series";
+        remove.addEventListener("click", () => {
+          if (state.regionNames.length <= 1) {
+            statusMessage.textContent = "At least one series is required.";
+            return;
+          }
+          removeRegionAt(idx);
+        });
+        slot.appendChild(remove);
+
+        regionContainer.appendChild(slot);
+      });
+    }
+
+    function addRegionSlot() {
+      const dataset = getDataset(state.datasetKey);
+      const available = Object.keys(dataset.regions);
+      if (available.length === 0) {
+        statusMessage.textContent = "Cannot add series: dataset has no regions.";
+        return;
+      }
+      const unused = available.find((name) => !state.regionNames.includes(name));
+      state.regionNames.push(unused || available[0]);
+      buildRegionControls();
+      updateChart();
+    }
+
+    function removeRegionAt(index) {
+      state.regionNames.splice(index, 1);
+      updateChart();
+    }
+
+    function ensureExpressionsAvailable() {
+      if (!Array.isArray(state.expressions) || state.expressions.length === 0) {
+        state.expressions = ["1"];
+      }
+    }
+
+    function buildAdministrationLegend(administrations) {
+      if (!adminLegend) {
+        return;
+      }
+
+      if (!administrations || administrations.length === 0) {
+        adminLegend.classList.remove("is-visible");
+        adminLegend.innerHTML = "";
+        return;
+      }
+
+      adminLegend.classList.add("is-visible");
+      const header = document.createElement("h2");
+      header.textContent = "Administrations";
+
+      adminLegend.innerHTML = "";
+      adminLegend.appendChild(header);
+
+      administrations.forEach((admin) => {
+        const item = document.createElement("div");
+        item.className = "admin-legend-item";
+
+        const colorSwatch = document.createElement("span");
+        colorSwatch.className = "admin-legend-color";
+        colorSwatch.style.color = admin.color || "#94a3b8";
+        item.appendChild(colorSwatch);
+
+        const textWrapper = document.createElement("span");
+        textWrapper.className = "admin-legend-text";
+        const baseName = admin.label || admin.party || "Unnamed";
+        const partyLabel = admin.party && baseName ? " (" + admin.party + ")" : admin.party ? admin.party : "";
+        textWrapper.textContent = baseName + partyLabel;
+
+        item.appendChild(textWrapper);
+        adminLegend.appendChild(item);
+      });
+    }
+
+    function computeTickInterval(minValue, maxValue) {
+      const span = Math.abs(maxValue - minValue);
+      if (!Number.isFinite(span) || span <= 0) {
+        return null;
+      }
+      const rough = span / 6;
+      const exponent = Math.floor(Math.log10(rough));
+      const base = Math.pow(10, exponent);
+      const steps = [1, 2, 5, 10];
+      for (const step of steps) {
+        const candidate = step * base;
+        if (rough <= candidate) {
+          return candidate;
+        }
+      }
+      return steps[steps.length - 1] * base;
+    }
+
+    function expressionDisplayLabel(expression, regionSeries) {
+      const tokens = tokenize(expression);
+      const parts = tokens.map((token) => {
+        if (token === "(" || token === ")" || "+-*/".includes(token)) {
+          return token;
+        }
+        const numeric = Number(token);
+        if (!token.includes(".") && !Number.isNaN(numeric)) {
+          const idx = numeric - 1;
+          if (idx >= 0 && idx < regionSeries.length) {
+            return regionSeries[idx].name;
+          }
+        }
+        return token;
+      });
+      let label = parts.join(" ");
+      label = label.replace(/\s+([)])/g, "$1");
+      label = label.replace(/([(])\s+/g, "$1");
+      label = label.replace(/\s*([+\-*/])\s*/g, " $1 ");
+      return label.replace(/\s+/g, " ").trim();
+    }
+
+    function buildExpressionControls() {
+      ensureExpressionsAvailable();
+      expressionContainer.innerHTML = "";
+
+      state.expressions.forEach((exprText, idx) => {
+        const slot = document.createElement("div");
+        slot.className = "expression-slot";
+
+        const label = document.createElement("span");
+        label.textContent = `Expression ${idx + 1}`;
+        slot.appendChild(label);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "e.g. 1/(1+2)";
+        input.value = exprText;
+        input.addEventListener("input", () => {
+          state.expressions[idx] = input.value;
+          updateChart();
+        });
+        slot.appendChild(input);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove-expression";
+        remove.textContent = "Remove";
+        remove.title = "Remove expression";
+        remove.addEventListener("click", () => {
+          if (state.expressions.length <= 1) {
+            statusMessage.textContent = "At least one expression is required.";
+            return;
+          }
+          state.expressions.splice(idx, 1);
+          buildExpressionControls();
+          updateChart();
+        });
+        slot.appendChild(remove);
+
+        expressionContainer.appendChild(slot);
+      });
+    }
+
+    function tokenize(expression) {
+      const tokens = [];
+      let i = 0;
+      while (i < expression.length) {
+        const ch = expression[i];
+        if (ch === " " || ch === "\t" || ch === "\n") {
+          i += 1;
+          continue;
+        }
+        if ("+-*/()".includes(ch)) {
+          tokens.push(ch);
+          i += 1;
+          continue;
+        }
+        if ((ch >= "0" && ch <= "9") || ch === ".") {
+          let value = ch;
+          i += 1;
+          while (i < expression.length) {
+            const next = expression[i];
+            if ((next >= "0" && next <= "9") || next === ".") {
+              value += next;
+              i += 1;
+            } else {
+              break;
+            }
+          }
+          tokens.push(value);
+          continue;
+        }
+        throw new Error("Unexpected character '" + ch + "' in expression.");
+      }
+      return tokens;
+    }
+
+    function shuntingYard(tokens, regionCount) {
+      const output = [];
+      const operators = [];
+      const precedence = {
+        "+": 1,
+        "-": 1,
+        "*": 2,
+        "/": 2,
+        "u-": 3,
+      };
+      const associativity = {
+        "+": "L",
+        "-": "L",
+        "*": "L",
+        "/": "L",
+        "u-": "R",
+      };
+      let expectOperand = true;
+
+      for (const token of tokens) {
+        if (token === "(") {
+          operators.push(token);
+          expectOperand = true;
+          continue;
+        }
+        if (token === ")") {
+          while (operators.length > 0 && operators[operators.length - 1] !== "(") {
+            output.push(operators.pop());
+          }
+          if (operators.length === 0) {
+            throw new Error("Mismatched parentheses in expression.");
+          }
+          operators.pop();
+          expectOperand = false;
+          continue;
+        }
+        if ("+-*/".includes(token)) {
+          if (token === "-" && expectOperand) {
+            operators.push("u-");
+            continue;
+          }
+          while (operators.length > 0) {
+            const top = operators[operators.length - 1];
+            if (top === "(") {
+              break;
+            }
+            const topPrec = precedence[top];
+            const tokenPrec = precedence[token];
+            if (
+              topPrec > tokenPrec ||
+              (topPrec === tokenPrec && associativity[token] === "L")
+            ) {
+              output.push(operators.pop());
+            } else {
+              break;
+            }
+          }
+          operators.push(token);
+          expectOperand = true;
+          continue;
+        }
+        // number literal (potentially region reference)
+        const numeric = Number(token);
+        if (Number.isNaN(numeric)) {
+          throw new Error("Invalid number token '" + token + "'.");
+        }
+        if (!token.includes(".") && numeric >= 1 && numeric <= regionCount) {
+          output.push({ type: "region", index: numeric - 1 });
+        } else {
+          output.push({ type: "literal", value: numeric });
+        }
+        expectOperand = false;
+      }
+
+      while (operators.length > 0) {
+        const op = operators.pop();
+        if (op === "(" || op === ")") {
+          throw new Error("Mismatched parentheses in expression.");
+        }
+        output.push(op);
+      }
+
+      return output;
+    }
+
+    function toArray(value, length) {
+      if (Array.isArray(value)) {
+        return value.slice();
+      }
+      const arr = new Array(length);
+      for (let i = 0; i < length; i += 1) {
+        arr[i] = value;
+      }
+      return arr;
+    }
+
+    function evaluateExpression(expression, regionSeries, yearsCount) {
+      const tokens = tokenize(expression);
+      const rpn = shuntingYard(tokens, regionSeries.length);
+      const stack = [];
+
+      for (const token of rpn) {
+        if (typeof token === "string") {
+          if (token === "u-") {
+            if (stack.length < 1) {
+              throw new Error("Invalid expression: unary operator missing operand.");
+            }
+            const value = stack.pop();
+            const array = toArray(value, yearsCount);
+            stack.push(array.map((v) => (v == null ? null : -v)));
+            continue;
+          }
+          if (stack.length < 2) {
+            throw new Error("Invalid expression: binary operator missing operands.");
+          }
+          const right = stack.pop();
+          const left = stack.pop();
+          const leftArr = toArray(left, yearsCount);
+          const rightArr = toArray(right, yearsCount);
+          const result = new Array(yearsCount);
+          for (let i = 0; i < yearsCount; i += 1) {
+            const lv = leftArr[i];
+            const rv = rightArr[i];
+            if (lv == null || rv == null) {
+              result[i] = null;
+              continue;
+            }
+            switch (token) {
+              case "+":
+                result[i] = lv + rv;
+                break;
+              case "-":
+                result[i] = lv - rv;
+                break;
+              case "*":
+                result[i] = lv * rv;
+                break;
+              case "/":
+                result[i] = rv === 0 ? null : lv / rv;
+                break;
+              default:
+                throw new Error("Unsupported operator '" + token + "'.");
+            }
+          }
+          stack.push(result);
+          continue;
+        }
+        if (token.type === "region") {
+          const idx = token.index;
+          if (idx < 0 || idx >= regionSeries.length) {
+            throw new Error("Expression references series #" + (idx + 1) + " which is undefined.");
+          }
+          stack.push(regionSeries[idx].values);
+          continue;
+        }
+        if (token.type === "literal") {
+          stack.push(token.value);
+          continue;
+        }
+        throw new Error("Unknown token in evaluation.");
+      }
+
+      if (stack.length !== 1) {
+        throw new Error("Invalid expression: leftover values after evaluation.");
+      }
+
+      return toArray(stack[0], yearsCount);
+    }
+
+    function updateChart() {
+      try {
+        statusMessage.textContent = "";
+        const dataset = getDataset(state.datasetKey);
+        ensureRegionSelectionsAvailable(dataset);
+        ensureExpressionsAvailable();
+        buildRegionControls();
+
+        const years = dataset.years;
+        const numericYears = years.map((year) => {
+          const value = Number(year);
+          return Number.isNaN(value) ? null : value;
+        });
+        const useNumericYears = numericYears.every((value) => value !== null);
+        const baseXValues = useNumericYears ? numericYears : years;
+        const regionSeries = state.regionNames.map((name, idx) => {
+          const values = dataset.regions[name];
+          if (!values) {
+            throw new Error("Region '" + name + "' not available in dataset.");
+          }
+          return {
+            index: idx,
+            name,
+            values,
+          };
+        });
+
+        const administrations = (payload.administrations && payload.administrations[state.datasetKey]) || [];
+
+        const trimmedExpressions = state.expressions.map((expr) => expr.trim());
+        const isLogScale = state.scale === "log";
+        if (trimmedExpressions.some((expr) => expr.length === 0)) {
+          throw new Error("Expressions cannot be empty.");
+        }
+
+        const traces = trimmedExpressions.map((exprText, idx) => {
+          const values = evaluateExpression(exprText, regionSeries, years.length);
+          const label = expressionDisplayLabel(exprText, regionSeries) || `Expression ${idx + 1}`;
+          const sanitizedValues = values.map((value) => {
+            if (value == null || !Number.isFinite(value)) {
+              return null;
+            }
+            if (isLogScale && value <= 0) {
+              return null;
+            }
+            return value;
+          });
+          return {
+            x: baseXValues,
+            y: sanitizedValues,
+            mode: "lines+markers",
+            name: label,
+            line: {
+              width: 1.2,
+            },
+            marker: {
+              size: 4,
+              line: { width: 0 },
+            },
+            hovertemplate: `%{x}<br>${label}: %{y}<extra></extra>`,
+          };
+        });
+
+        const finiteIndices = [];
+        traces.forEach((trace) => {
+          trace.y.forEach((value, index) => {
+            if (value != null && Number.isFinite(value)) {
+              finiteIndices.push(index);
+            }
+          });
+        });
+
+        let sliceStartIndex = 0;
+        let sliceEndIndex = baseXValues.length - 1;
+        if (finiteIndices.length > 0) {
+          sliceStartIndex = Math.min(...finiteIndices);
+          sliceEndIndex = Math.max(...finiteIndices);
+        }
+
+        const trimmedXValues = baseXValues.slice(sliceStartIndex, sliceEndIndex + 1);
+        traces.forEach((trace) => {
+          trace.x = trace.x.slice(sliceStartIndex, sliceEndIndex + 1);
+          trace.y = trace.y.slice(sliceStartIndex, sliceEndIndex + 1);
+        });
+
+        const filteredXValues = [];
+        traces.forEach((trace) => {
+          const filteredX = [];
+          const filteredY = [];
+          trace.x.forEach((xValue, index) => {
+            const yValue = trace.y[index];
+            if (yValue != null && Number.isFinite(yValue)) {
+              filteredX.push(xValue);
+              filteredY.push(yValue);
+              filteredXValues.push(xValue);
+            }
+          });
+          trace.x = filteredX;
+          trace.y = filteredY;
+        });
+
+        const hasTrimmedDomain = filteredXValues.length > 0;
+        const xRangeMin = hasTrimmedDomain ? Math.min(...filteredXValues) : baseXValues[0];
+        const xRangeMax = hasTrimmedDomain ? Math.max(...filteredXValues) : baseXValues[baseXValues.length - 1];
+
+        const xAxisConfig = { title: "Year" };
+        if (useNumericYears) {
+          xAxisConfig.type = "linear";
+          xAxisConfig.tickformat = "d";
+        } else {
+          xAxisConfig.type = "category";
+        }
+        if (hasTrimmedDomain) {
+          xAxisConfig.range = [xRangeMin, xRangeMax];
+        } else {
+          xAxisConfig.autorange = true;
+        }
+        xAxisConfig.showgrid = true;
+        xAxisConfig.gridcolor = "#e2e8f0";
+        xAxisConfig.gridwidth = 1;
+
+        const toNumericOrNull = (value) => {
+          const numeric = Number(value);
+          return Number.isNaN(numeric) ? null : numeric;
+        };
+
+        const rectangles = administrations
+          .map((admin) => {
+            const fillcolor = admin.color || "#94a3b8";
+            const opacity = typeof admin.opacity === "number" ? admin.opacity : 0.12;
+            if (useNumericYears) {
+              const startNumeric = toNumericOrNull(admin.start);
+              const endNumeric = toNumericOrNull(admin.end);
+              if (startNumeric == null || endNumeric == null) {
+                return null;
+              }
+              if (!hasTrimmedDomain || startNumeric > xRangeMax || endNumeric < xRangeMin) {
+                return null;
+              }
+              return {
+                type: "rect",
+                xref: "x",
+                yref: "paper",
+                x0: Math.max(startNumeric, xRangeMin),
+                x1: Math.min(endNumeric, xRangeMax),
+                y0: 0,
+                y1: 1,
+                fillcolor,
+                opacity,
+                line: { width: 0 },
+                layer: "below",
+              };
+            }
+
+            return {
+              type: "rect",
+              xref: "x",
+              yref: "paper",
+              x0: admin.start,
+              x1: admin.end,
+              y0: 0,
+              y1: 1,
+              fillcolor,
+              opacity,
+              line: { width: 0 },
+              layer: "below",
+            };
+          })
+          .filter(Boolean);
+
+        const boundaryLines = [];
+        const seenBoundaries = new Set();
+        const addBoundary = (value, key, color) => {
+          if (value == null || !hasTrimmedDomain) {
+            return;
+          }
+          if (value < xRangeMin || value > xRangeMax) {
+            return;
+          }
+          if (seenBoundaries.has(key)) {
+            return;
+          }
+          seenBoundaries.add(key);
+          boundaryLines.push({
+            type: "line",
+            xref: "x",
+            yref: "paper",
+            x0: value,
+            x1: value,
+            y0: 0,
+            y1: 1,
+            line: { color, width: 1, dash: "dot" },
+            layer: "above",
+          });
+        };
+
+        administrations.forEach((admin) => {
+          const color = admin.color || "#94a3b8";
+          if (useNumericYears) {
+            const startNumeric = toNumericOrNull(admin.start);
+            const endNumeric = toNumericOrNull(admin.end);
+            addBoundary(startNumeric, "start-" + startNumeric, color);
+            addBoundary(endNumeric, "end-" + endNumeric, color);
+            return;
+          }
+
+          addBoundary(admin.start, "start-" + admin.start, color);
+          addBoundary(admin.end, "end-" + admin.end, color);
+        });
+
+        const yValues = [];
+        traces.forEach((trace) => {
+          trace.y.forEach((v) => {
+            if (v != null && Number.isFinite(v)) {
+              yValues.push(v);
+            }
+          });
+        });
+
+        const yAxisConfig = {
+          title: isLogScale ? "Value (log)" : "Value",
+          showgrid: true,
+          gridcolor: "#e2e8f0",
+          gridwidth: 1,
+        };
+        if (isLogScale) {
+          yAxisConfig.type = "log";
+          yAxisConfig.autorange = true;
+          if (yValues.length === 0) {
+            statusMessage.textContent = "No positive values available for logarithmic scale.";
+          }
+        } else if (yValues.length === 0) {
+          yAxisConfig.autorange = true;
+        } else {
+          const minValue = Math.min(...yValues);
+          const maxValue = Math.max(...yValues);
+          let lower = minValue;
+          let upper = maxValue;
+          if (lower === upper) {
+            const padding = Math.max(1, Math.abs(lower) * 0.1);
+            lower -= padding;
+            upper += padding;
+          } else {
+            const span = upper - lower;
+            const padding = span * 0.08;
+            lower -= padding;
+            upper += padding;
+          }
+          yAxisConfig.range = [lower, upper];
+          yAxisConfig.autorange = false;
+          const tickInterval = computeTickInterval(lower, upper);
+          if (tickInterval) {
+            yAxisConfig.dtick = tickInterval;
+          }
+        }
+
+        buildAdministrationLegend(administrations);
+
+        Plotly.react("chart", traces, {
+          margin: { l: 60, r: 30, t: 20, b: 60 },
+          hovermode: "x unified",
+          legend: { orientation: "h", y: -0.2 },
+          xaxis: xAxisConfig,
+          yaxis: yAxisConfig,
+          shapes: [...rectangles, ...boundaryLines],
+          showlegend: true,
+        });
+        adjustParentFrame();
+      } catch (error) {
+        statusMessage.textContent = error.message;
+        Plotly.purge("chart");
+      }
+    }
+
+    datasetSelect.addEventListener("change", () => {
+      state.datasetKey = datasetSelect.value;
+      const dataset = getDataset(state.datasetKey);
+      ensureRegionSelectionsAvailable(dataset);
+      buildRegionControls();
+      buildExpressionControls();
+      updateChartTitle();
+      updateChart();
+    });
+
+    if (logScaleToggle) {
+      logScaleToggle.checked = state.scale === "log";
+      logScaleToggle.addEventListener("change", () => {
+        state.scale = logScaleToggle.checked ? "log" : "linear";
+        updateChart();
+      });
+    }
+
+    addRegionButton.addEventListener("click", () => {
+      addRegionSlot();
+    });
+
+    addExpressionButton.addEventListener("click", () => {
+      ensureExpressionsAvailable();
+      state.expressions.push("1");
+      buildExpressionControls();
+      updateChart();
+    });
+
+    function init() {
+      buildDatasetSelect();
+      const dataset = getDataset(state.datasetKey);
+      ensureRegionSelectionsAvailable(dataset);
+      buildRegionControls();
+      buildExpressionControls();
+      updateChart();
+      adjustParentFrame();
+    }
+
+    init();
+
+    function adjustParentFrame() {
+      if (!window.frameElement) {
+        return;
+      }
+      const update = () => {
+        window.frameElement.style.height = document.body.scrollHeight + "px";
+      };
+      update();
+      if (typeof ResizeObserver === "function") {
+        const observer = new ResizeObserver(update);
+        observer.observe(document.body);
+      } else {
+        window.addEventListener("load", update);
+      }
+    }
+  </script>
+</body>
+</html>

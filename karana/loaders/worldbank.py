@@ -101,9 +101,7 @@ def load_worldbank_series(
         for row in rows:
             region = _extract_label(row, "economy")
             year = _extract_label(row, "time")
-            value = row.get(indicator)
-
-            numeric = _to_numeric(value)
+            numeric = _extract_numeric_value(row, indicator)
             if numeric is None:
                 continue
 
@@ -159,6 +157,28 @@ def _extract_label(row: Mapping[str, object], field: str) -> str:
     return str(value)
 
 
+def _extract_numeric_value(row: Mapping[str, object], indicator: str) -> float | None:
+    if indicator in row:
+        candidate = row[indicator]
+        if isinstance(candidate, Mapping):
+            candidate = candidate.get("value")
+        numeric = _to_numeric(candidate)
+        if numeric is not None:
+            return numeric
+
+    candidate = row.get("value")
+    if isinstance(candidate, Mapping):
+        candidate = candidate.get("value")
+    numeric = _to_numeric(candidate)
+    if numeric is not None:
+        series_code = row.get("series")
+        if isinstance(series_code, Mapping):
+            series_code = series_code.get("id") or series_code.get("value")
+        if series_code is None or str(series_code) == indicator:
+            return numeric
+    return None
+
+
 def _normalize_year_string(value: object) -> str:
     if isinstance(value, (int,)):
         return str(value)
@@ -172,6 +192,9 @@ def _normalize_year_string(value: object) -> str:
         stripped = value.strip()
         if stripped.isdigit():
             return stripped
+        digits = "".join(ch for ch in stripped if ch.isdigit())
+        if digits:
+            return digits
         try:
             numeric = float(stripped)
         except ValueError:

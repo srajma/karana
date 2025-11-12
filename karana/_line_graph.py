@@ -513,6 +513,7 @@ class LineGraph:
       if (!chartTitle) {{
         return;
       }}
+      /* COMMENT THIS OUT TO MAKE THE TITLE UPDATE WHEN CHANGED */
       if (state.customTitle) {{
         chartTitle.textContent = state.customTitle;
         document.title = state.customTitle;

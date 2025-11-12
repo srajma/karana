@@ -161,6 +161,6 @@ def test_worldbank_integration_creates_html():
 
     assert output_path.exists()
     content = output_path.read_text(encoding="utf-8")
-    assert "karana LineGraph" in content or "World Bank" in content
+    assert indicator in content
 
 
