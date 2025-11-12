@@ -4,7 +4,7 @@ import html as html_utils
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional
 
 import pandas as pd  # type: ignore
 
@@ -23,8 +23,8 @@ class ScatterPlot:
 
     Each dataframe is expected to include a `Region` column followed by one column per year.
     Users select which dataset populates the X axis and which populates the Y axis, then
-    choose regions (series) and a year to plot. Each region is rendered as one point on the
-    scatter chart for the selected year.
+    choose a year to plot. Every region shared between the datasets is rendered as a single
+    point in the scatter chart for the selected year.
     """
 
     def __init__(self, dfs: Mapping[str, pd.DataFrame]) -> None:
@@ -39,7 +39,6 @@ class ScatterPlot:
 
         self._default_x: Optional[str] = None
         self._default_y: Optional[str] = None
-        self._default_regions: Optional[List[str]] = None
         self._default_year: Optional[str] = None
         self._dataset_titles: Dict[str, str] = {}
 
@@ -48,30 +47,6 @@ class ScatterPlot:
     def default_axes(self, *, x: str, y: str) -> "ScatterPlot":
         self._default_x = self._resolve_dataset_key(x)
         self._default_y = self._resolve_dataset_key(y)
-        return self
-
-    def default_regions(self, *regions: str | Sequence[str]) -> "ScatterPlot":
-        if not regions:
-            raise ValueError("default_regions requires at least one region.")
-
-        if len(regions) == 1 and isinstance(regions[0], Sequence) and not isinstance(
-            regions[0], (str, bytes)
-        ):
-            flattened: Iterable[Any] = regions[0]  # type: ignore[assignment]
-        else:
-            flattened = regions
-
-        normalised: List[str] = []
-        for entry in flattened:
-            text = str(entry).strip()
-            if not text:
-                raise ValueError("Region names must not be empty.")
-            normalised.append(text)
-
-        if not normalised:
-            raise ValueError("default_regions requires at least one region.")
-
-        self._default_regions = normalised
         return self
 
     def default_year(self, year: Any) -> "ScatterPlot":
@@ -100,7 +75,7 @@ class ScatterPlot:
     # ------------------------------------------------------------------------------------
 
     def _render_html(self) -> str:
-        x_key, y_key, default_year, default_regions = self._determine_defaults()
+        x_key, y_key, default_year = self._determine_defaults()
         title_text = html_utils.escape(
             f"{self._resolve_dataset_title(y_key)} vs {self._resolve_dataset_title(x_key)}"
         )
@@ -116,7 +91,6 @@ class ScatterPlot:
             "defaults": {
                 "axes": {"x": x_key, "y": y_key},
                 "year": default_year,
-                "regions": default_regions,
             },
             "titles": {
                 "mapping": self._dataset_titles,
@@ -197,47 +171,6 @@ class ScatterPlot:
       text-align: center;
       color: #1f2937;
     }}
-    .region-list {{
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      width: 100%;
-    }}
-    .region-slot {{
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }}
-    .region-slot span {{
-      font-weight: 500;
-      color: #475569;
-      min-width: 1.5rem;
-      text-align: right;
-    }}
-    button {{
-      border: none;
-      background: #2563eb;
-      color: white;
-      border-radius: 999px;
-      padding: 0.45rem 0.9rem;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
-    }}
-    button:hover {{
-      background: #1d4ed8;
-      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
-    }}
-    .remove-region {{
-      background: #e11d48;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-    }}
-    .remove-region:hover {{
-      background: #be123c;
-    }}
     .status-message {{
       min-height: 1.25rem;
       font-size: 0.9rem;
@@ -264,11 +197,6 @@ class ScatterPlot:
         <input id="year-slider" type="range" min="0" max="0" step="1" value="0" />
         <span id="year-value" class="year-value"></span>
       </div>
-      <div class="control-group">
-        <label>Series</label>
-        <div id="region-selects" class="region-list"></div>
-        <button id="add-region" type="button">+ Add Series</button>
-      </div>
       <div class="status-message" id="status-message"></div>
     </div>
     <h1 id="chart-title">{title_text}</h1>
@@ -284,15 +212,12 @@ class ScatterPlot:
       year: payload.defaults.year,
       yearIndex: null,
       yearOptions: [],
-      regionNames: [...payload.defaults.regions],
     }};
 
     const xAxisSelect = document.getElementById("x-axis-select");
     const yAxisSelect = document.getElementById("y-axis-select");
     const yearSlider = document.getElementById("year-slider");
     const yearValue = document.getElementById("year-value");
-    const regionContainer = document.getElementById("region-selects");
-    const addRegionButton = document.getElementById("add-region");
     const statusMessage = document.getElementById("status-message");
     const chartTitle = document.getElementById("chart-title");
 
@@ -375,147 +300,59 @@ class ScatterPlot:
       yearValue.textContent = state.year;
     }}
 
-    function ensureRegionSelectionsAvailable() {{
-      const available = computeCommonRegions(state.xKey, state.yKey);
-      if (!available || available.length === 0) {{
-        throw new Error("Selected axes do not share any regions.");
-      }}
-      if (!Array.isArray(state.regionNames) || state.regionNames.length === 0) {{
-        state.regionNames = [available[0]];
-        return;
-      }}
-      state.regionNames = state.regionNames.map((name, index) => {{
-        if (available.includes(name)) {{
-          return name;
-        }}
-        return available[Math.min(index, available.length - 1)];
-      }});
-      if (state.regionNames.length === 0) {{
-        state.regionNames = [available[0]];
-      }}
-    }}
-
-    function buildRegionControls() {{
-      regionContainer.innerHTML = "";
-      const available = computeCommonRegions(state.xKey, state.yKey);
-
-      state.regionNames.forEach((regionName, idx) => {{
-        const slot = document.createElement("div");
-        slot.className = "region-slot";
-
-        const label = document.createElement("span");
-        label.textContent = idx + 1;
-        slot.appendChild(label);
-
-        const select = document.createElement("select");
-        available.forEach((name) => {{
-          const option = document.createElement("option");
-          option.value = name;
-          option.textContent = name;
-          if (name === regionName) {{
-            option.selected = true;
-          }}
-          select.appendChild(option);
-        }});
-
-        select.addEventListener("change", () => {{
-          state.regionNames[idx] = select.value;
-          updateChart();
-        }});
-
-        slot.appendChild(select);
-
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "remove-region";
-        remove.textContent = "Remove";
-        remove.title = "Remove series";
-        remove.addEventListener("click", () => {{
-          if (state.regionNames.length <= 1) {{
-            statusMessage.textContent = "At least one series is required.";
-            return;
-          }}
-          removeRegionAt(idx);
-        }});
-        slot.appendChild(remove);
-
-        regionContainer.appendChild(slot);
-      }});
-    }}
-
-    function addRegionSlot() {{
-      const available = computeCommonRegions(state.xKey, state.yKey);
-      if (!available || available.length === 0) {{
-        statusMessage.textContent = "Cannot add series: no overlapping regions.";
-        return;
-      }}
-      const unused = available.find((name) => !state.regionNames.includes(name));
-      state.regionNames.push(unused || available[0]);
-      buildRegionControls();
-      updateChart();
-    }}
-
-    function removeRegionAt(index) {{
-      state.regionNames.splice(index, 1);
-      buildRegionControls();
-      updateChart();
-    }}
-
     function updateChart() {{
       try {{
         statusMessage.textContent = "";
         ensureYearStateAvailable();
-        ensureRegionSelectionsAvailable();
-        buildRegionControls();
 
         const datasetX = getDataset(state.xKey);
         const datasetY = getDataset(state.yKey);
-        const yearIdx = state.yearIndex;
-        const yearLabel = state.yearOptions[yearIdx];
+        const yearLabel = state.year;
+        if (!yearLabel) {{
+          throw new Error("No year is selected.");
+        }}
 
-        const traces = [];
-        const numericValuesX = [];
-        const numericValuesY = [];
+        const availableRegions = computeCommonRegions(state.xKey, state.yKey);
+        if (!availableRegions || availableRegions.length === 0) {{
+          throw new Error("Selected axes do not share any regions.");
+        }}
 
-        state.regionNames.forEach((regionName) => {{
+        const xYearIndex = datasetX.years.indexOf(yearLabel);
+        const yYearIndex = datasetY.years.indexOf(yearLabel);
+        if (xYearIndex === -1 || yYearIndex === -1) {{
+          throw new Error("Selected year not present in one of the datasets.");
+        }}
+
+        const traceX = [];
+        const traceY = [];
+        const traceRegions = [];
+
+        availableRegions.forEach((regionName) => {{
           const seriesX = datasetX.regions[regionName];
           const seriesY = datasetY.regions[regionName];
           if (!seriesX || !seriesY) {{
             return;
           }}
-          const xValue = seriesX[yearIdx];
-          const yValue = seriesY[yearIdx];
+          const xValue = seriesX[xYearIndex];
+          const yValue = seriesY[yYearIndex];
           if (xValue == null || yValue == null || !Number.isFinite(xValue) || !Number.isFinite(yValue)) {{
             return;
           }}
-          numericValuesX.push(xValue);
-          numericValuesY.push(yValue);
-          traces.push({{
-            type: "scatter",
-            mode: "markers",
-            name: regionName,
-            x: [xValue],
-            y: [yValue],
-            marker: {{
-              size: 12,
-              opacity: 0.85,
-              line: {{ width: 0 }},
-            }},
-            hovertemplate:
-              "Region: " + regionName + "<br>X: %{{x}}<br>Y: %{{y}}<extra></extra>",
-          }});
+          traceX.push(xValue);
+          traceY.push(yValue);
+          traceRegions.push(regionName);
         }});
 
-        if (traces.length === 0) {{
+        if (traceX.length === 0) {{
           Plotly.purge("chart");
           statusMessage.textContent = "No numeric values available for the selected year.";
           return;
         }}
 
-        const xMin = Math.min(...numericValuesX);
-        const xMax = Math.max(...numericValuesX);
-        const yMin = Math.min(...numericValuesY);
-        const yMax = Math.max(...numericValuesY);
+        const xMin = Math.min(...traceX);
+        const xMax = Math.max(...traceX);
+        const yMin = Math.min(...traceY);
+        const yMax = Math.max(...traceY);
 
         function expandRange(minValue, maxValue) {{
           let lower = minValue;
@@ -536,7 +373,23 @@ class ScatterPlot:
         const [xLower, xUpper] = expandRange(xMin, xMax);
         const [yLower, yUpper] = expandRange(yMin, yMax);
 
-        Plotly.react("chart", traces, {{
+        Plotly.react("chart", [
+          {{
+            type: "scatter",
+            mode: "markers",
+            x: traceX,
+            y: traceY,
+            customdata: traceRegions,
+            hovertemplate: "Region: %{{customdata}}<br>X: %{{x}}<br>Y: %{{y}}<extra></extra>",
+            marker: {{
+              size: 10,
+              opacity: 0.85,
+              line: {{ width: 0 }},
+              color: "#2563eb",
+            }},
+            showlegend: false,
+          }},
+        ], {{
           margin: {{ l: 80, r: 30, t: 20, b: 60 }},
           xaxis: {{
             title: resolveDatasetTitle(state.xKey),
@@ -554,8 +407,6 @@ class ScatterPlot:
             gridwidth: 1,
             zeroline: false,
           }},
-          showlegend: true,
-          legend: {{ orientation: "h", y: -0.2 }},
         }});
 
         yearValue.textContent = yearLabel;
@@ -569,8 +420,6 @@ class ScatterPlot:
     xAxisSelect.addEventListener("change", () => {{
       state.xKey = xAxisSelect.value;
       ensureYearStateAvailable();
-      ensureRegionSelectionsAvailable();
-      buildRegionControls();
       updateChartTitle();
       updateChart();
     }});
@@ -578,8 +427,6 @@ class ScatterPlot:
     yAxisSelect.addEventListener("change", () => {{
       state.yKey = yAxisSelect.value;
       ensureYearStateAvailable();
-      ensureRegionSelectionsAvailable();
-      buildRegionControls();
       updateChartTitle();
       updateChart();
     }});
@@ -597,16 +444,10 @@ class ScatterPlot:
       }}
     }});
 
-    addRegionButton.addEventListener("click", () => {{
-      addRegionSlot();
-    }});
-
     function init() {{
       buildAxisSelect(xAxisSelect, state.xKey);
       buildAxisSelect(yAxisSelect, state.yKey);
       ensureYearStateAvailable();
-      ensureRegionSelectionsAvailable();
-      buildRegionControls();
       updateChartTitle();
       updateChart();
     }}
@@ -634,7 +475,7 @@ class ScatterPlot:
 """
         return html_output
 
-    def _determine_defaults(self) -> tuple[str, str, str, List[str]]:
+    def _determine_defaults(self) -> tuple[str, str, str]:
         if not self._datasets:
             raise ValueError("ScatterPlot has no datasets to render.")
 
@@ -664,46 +505,13 @@ class ScatterPlot:
                 f"Datasets '{x_key}' and '{y_key}' do not share any region names."
             )
 
-        if self._default_regions:
-            resolved_regions = self._resolve_region_names(available_regions, self._default_regions)
-            if not resolved_regions:
-                raise ValueError(
-                    "default_regions must include at least one region present in both datasets."
-                )
-        else:
-            resolved_regions = available_regions[: min(3, len(available_regions))]
-
-        return x_key, y_key, selected_year, resolved_regions
+        return x_key, y_key, selected_year
 
     def _compute_common_regions(self, dataset_x: _Dataset, dataset_y: _Dataset) -> List[str]:
         y_regions = set(dataset_y.regions.keys())
-        return [name for name in dataset_x.regions.keys() if name in y_regions]
-
-    def _resolve_region_names(
-        self, available: Sequence[str], references: Sequence[str]
-    ) -> List[str]:
-        resolved: List[str] = []
-        seen: set[str] = set()
-        for reference in references:
-            match = self._match_region_name(available, reference)
-            if match is not None and match not in seen:
-                resolved.append(match)
-                seen.add(match)
-        return resolved
-
-    def _match_region_name(self, available: Sequence[str], reference: str) -> Optional[str]:
-        if reference in available:
-            return reference
-        candidates = [name for name in available if name.startswith(reference)]
-        if candidates:
-            candidates.sort(key=len)
-            return candidates[0]
-        lowered_ref = reference.lower()
-        ci_candidates = [name for name in available if name.lower().startswith(lowered_ref)]
-        if ci_candidates:
-            ci_candidates.sort(key=len)
-            return ci_candidates[0]
-        return None
+        common = [name for name in dataset_x.regions.keys() if name in y_regions]
+        common.sort()
+        return common
 
     def _resolve_dataset_key(self, key: str) -> str:
         if key in self._datasets:
