@@ -89,7 +89,7 @@ class Plot:
     }}
     .plot-frame {{
       width: 100%;
-      border: none;
+      border-width: 1px 0 0 0;
       min-height: 540px;
       background: transparent;
       display: block;

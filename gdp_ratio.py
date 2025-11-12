@@ -115,6 +115,8 @@ graph_sea.default_exp(series("India") / series("Southeast Asia"))
 graph_ssa = deepcopy(graph_me)
 graph_ssa.default_exp(series("India") / series("Sub-Saharan Africa"))
 
+graph_sam = deepcopy(graph_me)
+graph_sam.default_exp(series("India") / series("South America"))
 
 page.add(graph_sea)
 page.add(graph_ssa)

@@ -231,7 +231,7 @@ class LineGraph:
 
     }}
     .karana-container {{
-      max-width: 1180px;
+      max-width: 1280px;
       margin: 0 auto;
       background: #ffffff;
       border-radius: 12px;
@@ -348,9 +348,11 @@ class LineGraph:
     }}
     .admin-legend {{
       width: 220px;
-      background: #f8fafc;
+      /*background: #f8fafc;*/
+      background: none;
       border-radius: 12px;
-      border: 1px solid #e2e8f0;
+      /*border: 1px solid #e2e8f0;*/
+      border: none;
       padding: 0.75rem;
       display: none;
     }}
@@ -363,6 +365,7 @@ class LineGraph:
       font-size: 1rem;
       margin: 0 0 0.35rem;
       color: #1f2937;
+      display: none;
     }}
     .admin-legend-item {{
       display: flex;
@@ -389,8 +392,11 @@ class LineGraph:
       opacity: 0.85;
     }}
     .admin-legend-text {{
-      font-weight: 450;
+      font-weight: 350;
       color: #111827;
+    }}
+    #chart-title {{
+      font-weight: 300;
     }}
   </style>
 </head>
@@ -936,10 +942,10 @@ class LineGraph:
             mode: "lines+markers",
             name: label,
             line: {{
-              width: 1.6,
+              width: 1.2,
             }},
             marker: {{
-              size: 6,
+              size: 4,
               line: {{ width: 0 }},
             }},
             hovertemplate: `%{{x}}<br>${{label}}: %{{y}}<extra></extra>`,
