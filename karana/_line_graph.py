@@ -551,6 +551,17 @@ class LineGraph:
       datasetSelect.value = state.datasetKey;
     }}
 
+    function toLetterCode(index) {{
+      const letters = [];
+      let value = index;
+      do {{
+        const remainder = value % 26;
+        letters.push(String.fromCharCode(65 + remainder));
+        value = Math.floor(value / 26) - 1;
+      }} while (value >= 0);
+      return letters.reverse().join("");
+    }}
+
     function buildRegionControls() {{
       regionContainer.innerHTML = "";
       const dataset = getDataset(state.datasetKey);
@@ -561,7 +572,7 @@ class LineGraph:
         slot.className = "region-slot";
 
         const label = document.createElement("span");
-        label.textContent = idx + 1;
+        label.textContent = toLetterCode(idx);
         slot.appendChild(label);
 
         const select = document.createElement("select");
