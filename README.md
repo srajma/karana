@@ -89,3 +89,12 @@ OWID: https://docs.owid.io/projects/etl/api/chart-api/
 IMF WEO: https://data.imf.org/en/datasets/IMF.RES:WEO
 
 Special GDP/capita (nominal) [IMF WEO] data (`data/imf_weo_ngdpdpc.csv`) downloaded from https://www.imf.org/external/datamapper/NGDPDPC@WEO and exported to csv
+
+World bank: http://pypi.org/project/wbgapi
+
+### dataset names:
+
+Dataset names for IMF and Worldbank data are listed in `imf_series_descriptions.json` and `worldbank_series_descriptions.json`. For OWID data you have no better way than to search the [OurWorldInData](https://ourworldindata.org/) website.
+
+- `uv run python scripts/export_worldbank_series.py` generates `worldbank_series_descriptions.json`, mapping World Bank indicator IDs to their full descriptions (defaults to database 2, use `--database` to override).
+- `uv run python scripts/export_imf_series.py` generates `imf_series_descriptions.json`, mapping IMF WEO series codes (from `data/imf_weo.csv`) to their descriptions.
