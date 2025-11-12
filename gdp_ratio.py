@@ -95,28 +95,36 @@ graph_idn.titles(
         "NGDPDPC.A": "GDP/capita (nominal, current prices) [IMF WEO]",
     }
 )
+graph_idn.title("Ratio of GDP/capita: India vs Indonesia ")
 
 graph_sl = deepcopy(graph_idn)
 graph_sl.default_exp(series("India") / series("Sri Lanka"))
+graph_sl.title("Ratio of GDP/capita: India vs Sri Lanka")
 
 graph_bgd = deepcopy(graph_idn)
 graph_bgd.default_exp(series("India") / series("Bangladesh"))
+graph_bgd.title("Ratio of GDP/capita: India vs Bangladesh")
 
 graph_vnm = deepcopy(graph_idn)
 graph_vnm.default_exp(series("India") / series("Vietnam"))
+graph_vnm.title("Ratio of GDP/capita: India vs Vietnam")
 
 graph_me = deepcopy(graph_idn)
 graph_me.default_df("NGDPDPC.A")
 graph_me.default_exp(series("India") / series("Middle East (Region)"))
+graph_me.title("Ratio of GDP/capita: India vs Middle East")
 
 graph_sea = deepcopy(graph_me)
 graph_sea.default_exp(series("India") / series("Southeast Asia"))
+graph_sea.title("Ratio of GDP/capita: India vs Southeast Asia")
 
 graph_ssa = deepcopy(graph_me)
 graph_ssa.default_exp(series("India") / series("Sub-Saharan Africa"))
+graph_ssa.title("Ratio of GDP/capita: India vs Sub-Saharan Africa")
 
 graph_sam = deepcopy(graph_me)
 graph_sam.default_exp(series("India") / series("South America"))
+graph_sam.title("Ratio of GDP/capita: India vs South America")
 
 page.add(graph_sea)
 page.add(graph_ssa)

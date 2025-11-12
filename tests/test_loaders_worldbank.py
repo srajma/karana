@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd  # type: ignore
 import pytest  # type: ignore
 
+from karana import LineGraph
 from karana.loaders.worldbank import (
     WorldBankLoaderError,
     load_worldbank_series,
 )
+
+TEST_OUTPUTS_PATH = Path(__file__).resolve().parents[1] / "test_outputs"
 
 
 def test_load_worldbank_series_transforms_to_wide(monkeypatch):
@@ -128,5 +132,35 @@ def test_load_worldbank_series_no_observations_raises(monkeypatch):
 
     with pytest.raises(WorldBankLoaderError):
         load_worldbank_series("NY.GDP.MKTP.CD")
+
+
+@pytest.mark.integration
+def test_worldbank_integration_creates_html():
+    indicator = "NY.GDP.PCAP.CD"
+    economies = ["IND", "USA", "CHN"]
+
+    try:
+        datasets = load_worldbank_series(
+            indicator,
+            economies=economies,
+            most_recent=10,
+            database=2,
+            labels=True,
+        )
+    except Exception as exc:  # pragma: no cover - network dependent
+        pytest.skip(f"World Bank fetch failed: {exc}")
+
+    assert datasets, "Expected datasets from World Bank loader."
+
+    graph = LineGraph(datasets)
+    first_key = next(iter(datasets))
+    graph.default_df(first_key)
+
+    output_path = TEST_OUTPUTS_PATH / "worldbank_gdp_per_capita.html"
+    graph.show(str(output_path))
+
+    assert output_path.exists()
+    content = output_path.read_text(encoding="utf-8")
+    assert "karana LineGraph" in content or "World Bank" in content
 
 

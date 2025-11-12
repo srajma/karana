@@ -230,13 +230,14 @@
   </div>
 
   <script>
-    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"], "scale": "log"}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
+    const payload = {"datasets": {"gdp_ppp": {"years": ["2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020"], "regions": {"India": [null, null, null, 90.0, 100.0, 110.0, 120.0, null, null], "World": [null, null, null, 180.0, 200.0, 220.0, 240.0, 260.0, null], "China": [null, null, null, 120.0, 140.0, 160.0, 180.0, null, null]}}}, "defaults": {"dataset": "gdp_ppp", "seriesNames": ["India", "World", "China"], "expressions": ["1 / 2", "3 / 2"], "scale": "log", "customTitle": null}, "administrations": {"gdp_ppp": [{"start": "2018", "end": "2019", "label": "Sample Admin", "party": "Test Party", "color": "#123456", "opacity": null}]}, "titles": {"mapping": {}}};
 
     const state = {
       datasetKey: payload.defaults.dataset,
       regionNames: [...payload.defaults.seriesNames],
       expressions: [...payload.defaults.expressions],
       scale: payload.defaults.scale === "log" ? "log" : "linear",
+      customTitle: payload.defaults.customTitle || null,
     };
 
     const datasetSelect = document.getElementById("dataset-select");
@@ -278,7 +279,14 @@
       if (!chartTitle) {
         return;
       }
-      chartTitle.textContent = resolveDatasetTitle(state.datasetKey);
+      if (state.customTitle) {
+        chartTitle.textContent = state.customTitle;
+        document.title = state.customTitle;
+        return;
+      }
+      const resolved = resolveDatasetTitle(state.datasetKey);
+      chartTitle.textContent = resolved;
+      document.title = resolved;
     }
 
     function ensureRegionSelectionsAvailable(dataset) {

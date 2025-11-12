@@ -153,6 +153,24 @@ def test_default_df_prefix_matching():
     assert expressions == ["1"]
 
 
+def test_custom_title_overrides_mapping(tmp_path):
+    df = pd.DataFrame(
+        {
+            "Region": ["Alpha", "Beta"],
+            2000: [10, 20],
+            2001: [15, 25],
+        }
+    )
+    chart = LineGraph({"economics": df})
+    chart.default_df("economics")
+    chart.title("Custom GDP Chart")
+    output = tmp_path / "custom_title.html"
+    chart.show(str(output))
+    html = output.read_text(encoding="utf-8")
+    assert "<title>Custom GDP Chart</title>" in html
+    assert '<h1 id="chart-title">Custom GDP Chart</h1>' in html
+
+
 def test_default_scale_validation():
     df = pd.DataFrame(
         {

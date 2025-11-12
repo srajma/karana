@@ -59,6 +59,7 @@ class LineGraph:
         self._default_scale: str = "linear"
         self._administrations: Dict[str, List[dict[str, Any]]] = {}
         self._dataset_titles: Dict[str, str] = {}
+        self._custom_title: Optional[str] = None
 
     # --------------------------------------------------------------------- configuration
 
@@ -109,6 +110,12 @@ class LineGraph:
         if normalized not in {"linear", "log"}:
             raise ValueError("default_scale accepts only 'linear' or 'log'.")
         self._default_scale = normalized
+        return self
+
+    def title(self, value: str) -> "LineGraph":
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("title expects a non-empty string.")
+        self._custom_title = value.strip()
         return self
 
     def administrations(
@@ -196,6 +203,7 @@ class LineGraph:
     def _render_html(self) -> str:
         default_key, default_series_names, default_expressions = self._determine_defaults()
         dataset_title = html_utils.escape(self._resolve_dataset_title(default_key))
+        display_title = html_utils.escape(self._custom_title) if self._custom_title else dataset_title
 
         payload = {
             "datasets": {
@@ -210,6 +218,7 @@ class LineGraph:
                 "seriesNames": default_series_names,
                 "expressions": default_expressions,
                 "scale": self._default_scale,
+                "customTitle": self._custom_title,
             },
             "administrations": {
                 key: self._administrations.get(key, [])
@@ -227,7 +236,7 @@ class LineGraph:
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>{dataset_title}</title>
+  <title>{display_title}</title>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     :root {{
@@ -447,7 +456,7 @@ class LineGraph:
       </div>
       <div class="status-message" id="status-message"></div>
     </div>
-    <h1 id="chart-title">{dataset_title}</h1>
+    <h1 id="chart-title">{display_title}</h1>
     <div class="chart-and-legend">
       <div id="chart"></div>
       <div id="admin-legend" class="admin-legend"></div>
@@ -462,6 +471,7 @@ class LineGraph:
       regionNames: [...payload.defaults.seriesNames],
       expressions: [...payload.defaults.expressions],
       scale: payload.defaults.scale === "log" ? "log" : "linear",
+      customTitle: payload.defaults.customTitle || null,
     }};
 
     const datasetSelect = document.getElementById("dataset-select");
@@ -503,7 +513,14 @@ class LineGraph:
       if (!chartTitle) {{
         return;
       }}
-      chartTitle.textContent = resolveDatasetTitle(state.datasetKey);
+      if (state.customTitle) {{
+        chartTitle.textContent = state.customTitle;
+        document.title = state.customTitle;
+        return;
+      }}
+      const resolved = resolveDatasetTitle(state.datasetKey);
+      chartTitle.textContent = resolved;
+      document.title = resolved;
     }}
 
     function ensureRegionSelectionsAvailable(dataset) {{
