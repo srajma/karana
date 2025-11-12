@@ -9,6 +9,7 @@ dependencies = [
     "pandas>=2.3.3",
     "plotly>=6.4.0",
     "pytest>=9.0.0",
+    "wbgapi>=1.0.12",
 ]
 
 [dependency-groups]

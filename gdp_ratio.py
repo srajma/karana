@@ -130,4 +130,4 @@ page.add(graph_bgd)
 
 
 # graph.show("../maps/terrorism.html")
-page.show("../maps/gdp_ratio_2.html")
+page.show("../maps/gdp_ratio.html")

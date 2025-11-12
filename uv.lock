@@ -308,6 +308,7 @@ dependencies = [
     { name = "pandas" },
     { name = "plotly" },
     { name = "pytest" },
+    { name = "wbgapi" },
 ]
 
 [package.dev-dependencies]
@@ -321,6 +322,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "plotly", specifier = ">=6.4.0" },
     { name = "pytest", specifier = ">=9.0.0" },
+    { name = "wbgapi", specifier = ">=1.0.12" },
 ]
 
 [package.metadata.requires-dev]
@@ -991,6 +993,15 @@ wheels = [
 ]
 
 [[package]]
+name = "tabulate"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252 },
+]
+
+[[package]]
 name = "traitlets"
 version = "5.14.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1046,6 +1057,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760", size = 393185 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc", size = 129795 },
+]
+
+[[package]]
+name = "wbgapi"
+version = "1.0.12"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "tabulate" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d7/4a/f55695bd1c9f1996b675b6e9e980eef40ebdb5e4bf8774c059c31af6ade1/wbgapi-1.0.12.tar.gz", hash = "sha256:338c3c768bd120b80596b48fa0449ecabc93513ac989c55671dce579dbb3a5be", size = 33590 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/12/224030af4886e119a3d03b709f7130e9601a4d15332e1d6a35671b25a4de/wbgapi-1.0.12-py3-none-any.whl", hash = "sha256:c5a1e1683b03d4264d287627c2562932f30e7f5c65509b812cb2e3de7d32633f", size = 36385 },
 ]
 
 [[package]]
