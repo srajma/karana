@@ -714,10 +714,7 @@ class LineGraph:
         }}
         const numeric = Number(token);
         if (!token.includes(".") && !Number.isNaN(numeric)) {{
-          const idx = numeric - 1;
-          if (idx >= 0 && idx < regionSeries.length) {{
-            return regionSeries[idx].name;
-          }}
+          return token;
         }}
         if (typeof token === "string") {{
           const upper = token.toUpperCase();
@@ -751,7 +748,7 @@ class LineGraph:
 
         const input = document.createElement("input");
         input.type = "text";
-        input.placeholder = "e.g. 1/(1+2)";
+        input.placeholder = "e.g. A/(A+B)";
         input.value = exprText;
         input.addEventListener("input", () => {{
           state.expressions[idx] = input.value;
@@ -901,16 +898,12 @@ class LineGraph:
           expectOperand = false;
           continue;
         }}
-        // number literal (potentially region reference)
+        // number literal
         const numeric = Number(token);
         if (Number.isNaN(numeric)) {{
           throw new Error("Invalid number token '" + token + "'.");
         }}
-        if (!token.includes(".") && numeric >= 1 && numeric <= regionCount) {{
-          output.push({{ type: "region", index: numeric - 1 }});
-        }} else {{
-          output.push({{ type: "literal", value: numeric }});
-        }}
+        output.push({{ type: "literal", value: numeric }});
         expectOperand = false;
       }}
 
@@ -1307,7 +1300,7 @@ class LineGraph:
 
     addExpressionButton.addEventListener("click", () => {{
       ensureExpressionsAvailable();
-      state.expressions.push("1");
+      state.expressions.push("A");
       buildExpressionControls();
       updateChart();
     }});
